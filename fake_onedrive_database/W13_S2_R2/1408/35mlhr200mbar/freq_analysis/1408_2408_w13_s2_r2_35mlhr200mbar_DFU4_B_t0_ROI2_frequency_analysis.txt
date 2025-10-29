@@ -1,0 +1,16 @@
+Droplet Frequency Analysis - ROI 2
+==================================================
+
+Analysis Parameters:
+  Effective FPS: 25
+  Formation events recorded: 8
+  Number of cycles: 7
+
+Formation Event Frames: [74, 78, 95, 123, 180, 302, 385, 476]
+Cycle Lengths (frames): [4, 17, 28, 57, 122, 83, 91]
+Individual Frequencies: ['12.49', '12.49', '12.49', '12.49', '12.49', '12.49', '12.49'] Hz
+
+Results:
+  Average Cycle Length: 57.4 frames (2.297 seconds)
+  Frequency Method 1 (avg of frequencies): 12.49 Hz
+  Frequency Method 2 (freq from avg time): 12.49 Hz

@@ -51,6 +51,31 @@ The application scans a 7-8 level deep directory hierarchy with the following st
 
 **Note:** Frequency analysis files will be consolidated to one file per DFU row (matching dfu_measure structure) by updates to external analysis script.
 
+### File Naming Convention Details
+
+Files follow naming pattern that repeats folder structure metadata:
+```
+BBDD_TTDD_deviceid_flowparams_fluids_DFUx_area_timepoint_type_timestamp.csv/txt
+```
+
+Example:
+```
+0610_2310_w13_s1_r2_5mlhr150mbar_nacasso_DFU1_B_t0_droplet_annotations_20251024_102722.csv
+```
+
+**Optional Metadata Fields:**
+- **Area suffix (`_B`, `_C`, etc.)**: Multiple measurements from different areas on same DFU row
+  - `DFU1` = primary measurement
+  - `DFU1_B` = second area on same DFU row
+  - `DFU1_C` = third area, etc.
+  - Files with area suffixes represent separate measurements but are linked to same source
+- **Timepoint (`_t0`, `_t1`, `_t2`, etc.)**: Time-series measurements for tracking changes over time
+  - `_t0` = initial timepoint
+  - `_t1`, `_t2`, etc. = subsequent measurements
+  - Enables temporal analysis of device performance
+
+**Important:** These fields are optional and may not be present in all files. Database should track them when present but not break if absent. Multiple area measurements (e.g., DFU1, DFU1_B, DFU1_C) offer additional data resolution for the same experimental condition.
+
 ## Critical Design Considerations
 
 ### File Naming Flexibility

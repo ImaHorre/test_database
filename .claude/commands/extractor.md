@@ -110,9 +110,28 @@ NaCas_SO → {aqueous: "NaCas", oil: "SO"}
 
 ### File Names
 ```
+Simple format:
 DFU1.csv → DFU row 1 measurements
 DFU1_roi1.txt → DFU row 1, ROI 1 frequency data
+
+Full format (repeats folder metadata):
+0610_2310_w13_s1_r2_5mlhr150mbar_nacasso_DFU1_B_t0_droplet_annotations_20251024_102722.csv
+
+Optional area/timepoint suffixes:
+DFU1 → Primary measurement (area: None, timepoint: None)
+DFU1_B → Second area on same DFU row (area: "B", timepoint: None)
+DFU1_B_t0 → Second area, initial timepoint (area: "B", timepoint: "t0")
+DFU1_t1 → Primary area, second timepoint (area: None, timepoint: "t1")
+
+Parse to:
+{
+  dfu_row: 1,
+  measurement_area: "B" or None,
+  timepoint: "t0" or None
+}
 ```
+
+**Important:** Area and timepoint fields are optional. Multiple files with same DFU but different areas/timepoints are separate measurements from the same experimental condition.
 
 ## Technology Stack Considerations
 

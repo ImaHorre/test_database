@@ -84,11 +84,18 @@ Your output feeds into:
 
 ## Proposed CSV Schema
 
-### Option 1: Single Wide Table
+### Option 1: Single Wide Table (CURRENT IMPLEMENTATION)
 ```csv
-device_type,wafer,shim,replica,bonding_date,testing_date,aqueous_fluid,oil_fluid,aqueous_flowrate,oil_pressure,dfu_row,roi,droplet_sizes,frequency,file_path,scan_timestamp,quality_flag
-W13,13,1,4,2025-09-25,2025-09-25,SDS,SO,5,500,DFU1,roi1,[sizes],freq_value,path/to/file,2025-01-15T10:30:00,valid
+device_type,wafer,shim,replica,bonding_date,testing_date,aqueous_fluid,oil_fluid,aqueous_flowrate,oil_pressure,dfu_row,measurement_area,timepoint,droplet_size_mean,droplet_size_std,droplet_count,frequency_mean,frequency_count,file_path,scan_timestamp,quality_flag
+W13,13,1,4,2025-09-25,2025-09-25,SDS,SO,5,500,1,B,t0,25.5,3.2,150,5.3,8,path/to/file,2025-01-15T10:30:00,complete
 ```
+
+**New Fields:**
+- `measurement_area`: Optional ("B", "C", etc.) - multiple areas on same DFU row
+- `timepoint`: Optional ("t0", "t1", etc.) - time-series measurements
+- `droplet_size_mean`, `droplet_size_std`, `droplet_count`: From CSV file content
+- `frequency_mean`, `frequency_count`: From TXT file content
+- Files with same DFU but different area/timepoint are separate measurements
 
 ### Option 2: Normalized Tables
 **tests.csv**
