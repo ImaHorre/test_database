@@ -6,12 +6,13 @@ Built with Textual for beautiful terminal interface.
 
 from textual.app import App, ComposeResult
 from textual.containers import Container, Horizontal, Vertical, ScrollableContainer
-from textual.widgets import Header, Footer, Static, Button, Label, DataTable, Input, Select
+from textual.widgets import Header, Footer, Static, Button, Label, DataTable, Input, Select, RichLog
 from textual.binding import Binding
 from textual import events
 from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
+from rich.markdown import Markdown
 from datetime import datetime
 import pandas as pd
 from pathlib import Path
@@ -76,6 +77,92 @@ class DatabaseStatus(Static):
         self.update(status_text)
 
 
+class CommandTerminal(Container):
+    """Terminal-style command interface."""
+
+    def __init__(self, analyst: DataAnalyst):
+        super().__init__()
+        self.analyst = analyst
+        self.command_history = []
+        self.history_index = -1
+
+    def compose(self) -> ComposeResult:
+        """Create terminal widgets."""
+        yield Label("[bold cyan]COMMAND TERMINAL[/bold cyan]")
+        yield Label("Type natural language queries or 'help' for examples")
+        yield Label("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+        yield RichLog(id="terminal_output", wrap=True, highlight=True)
+        yield Input(placeholder="Enter command... (e.g., 'compare W13 and W14 devices')", id="terminal_input")
+
+    def on_mount(self) -> None:
+        """Initialize terminal on mount."""
+        output = self.query_one("#terminal_output", RichLog)
+        output.write("[dim]Terminal ready. Type a query or 'help' for examples.[/dim]")
+        output.write("")
+
+    def execute_command(self, command: str) -> None:
+        """Execute a natural language command."""
+        if not command.strip():
+            return
+
+        # Add to history
+        self.command_history.append(command)
+        self.history_index = -1
+
+        output = self.query_one("#terminal_output", RichLog)
+
+        # Show command
+        output.write(f"[bold cyan]Query>[/bold cyan] {command}")
+        output.write("")
+
+        # Process the query
+        result = self.analyst.process_natural_language_query(command)
+
+        # Display result
+        status = result.get('status', 'unknown')
+        message = result.get('message', '')
+
+        if status == 'success':
+            output.write("[bold green][Success][/bold green]")
+        elif status == 'clarification_needed':
+            output.write("[bold yellow][Clarification Needed][/bold yellow]")
+        elif status == 'error':
+            output.write("[bold red][Error][/bold red]")
+
+        output.write(message)
+
+        # Show data preview if available
+        data = result.get('result')
+        if data is not None and isinstance(data, pd.DataFrame) and len(data) > 0:
+            output.write("")
+            output.write("[bold]Data preview (first 5 rows):[/bold]")
+            preview_text = data.head(5).to_string()
+            output.write(preview_text)
+            if len(data) > 5:
+                output.write(f"[dim]... {len(data)} total rows[/dim]")
+
+        # Show plot path if available
+        plot_path = result.get('plot_path')
+        if plot_path:
+            output.write("")
+            output.write(f"[bold green]Plot saved:[/bold green] {plot_path}")
+            output.write("[dim]Open the file to view the visualization[/dim]")
+
+        # Show report path if available
+        report_path = result.get('report_path')
+        if report_path:
+            output.write("")
+            output.write(f"[bold green]Report saved:[/bold green] {report_path}")
+
+        output.write("")
+        output.write("━" * 60)
+        output.write("")
+
+        # Clear input
+        input_widget = self.query_one("#terminal_input", Input)
+        input_widget.value = ""
+
+
 class QuickCommandMenu(Static):
     """Widget showing quick command options."""
 
@@ -90,85 +177,8 @@ class QuickCommandMenu(Static):
         yield Button("[5] Compare Fluid Types", id="cmd_5", variant="primary")
         yield Button("[6] View All Available Devices", id="cmd_6", variant="success")
         yield Label("")
-        yield Button("[Q] Ask a Question (Natural Language)", id="cmd_q", variant="warning")
-        yield Label("")
         yield Button("[R] Refresh Database", id="cmd_refresh", variant="default")
         yield Button("[X] Exit", id="cmd_exit", variant="error")
-
-
-class ResultDisplay(Static):
-    """Widget for displaying analysis results."""
-
-    def __init__(self):
-        super().__init__()
-        self.update("[dim]Results will appear here after running a command...[/dim]")
-
-    def show_result(self, title: str, content: str, plot_path: str = None):
-        """Display analysis result."""
-        result_text = f"[bold green]{title}[/bold green]\n"
-        result_text += "━" * 60 + "\n\n"
-        result_text += content
-
-        if plot_path and Path(plot_path).exists():
-            result_text += f"\n\n[bold]Plot saved:[/bold] [cyan]{plot_path}[/cyan]"
-            result_text += "\n[dim](Open the file to view the visualization)[/dim]"
-
-        self.update(result_text)
-
-
-class InputDialog(Container):
-    """Dialog for collecting user input for analysis commands."""
-
-    def __init__(self, command_id: str, analyst: DataAnalyst):
-        super().__init__()
-        self.command_id = command_id
-        self.analyst = analyst
-
-    def compose(self) -> ComposeResult:
-        """Create input fields based on command."""
-
-        if self.command_id == "cmd_q":
-            yield Label("[bold]Natural Language Query[/bold]")
-            yield Label("Ask a question in plain English:")
-            yield Label("[dim]Examples: 'Compare W13 and W14', 'Track W13_S1_R1', 'Analyze flowrate effects for W13'[/dim]")
-            yield Input(placeholder="Enter your question...", id="nl_query")
-
-        elif self.command_id == "cmd_1":
-            yield Label("[bold]Compare Devices at Same Parameters[/bold]")
-            yield Label("Filter devices tested under same conditions:")
-            yield Input(placeholder="Device Type (e.g., W13, W14, or leave empty)", id="device_type")
-            yield Input(placeholder="Aqueous Flowrate (ml/hr, or leave empty)", id="flowrate")
-            yield Input(placeholder="Oil Pressure (mbar, or leave empty)", id="pressure")
-
-        elif self.command_id == "cmd_2":
-            yield Label("[bold]Analyze Flow Parameter Effects[/bold]")
-            yield Label("Analyze how parameters affect measurements:")
-            yield Input(placeholder="Device Type (e.g., W13)", id="device_type")
-            yield Input(placeholder="Parameter (aqueous_flowrate or oil_pressure)", id="parameter", value="aqueous_flowrate")
-            yield Input(placeholder="Metric (droplet_size_mean or frequency_mean)", id="metric", value="droplet_size_mean")
-
-        elif self.command_id == "cmd_3":
-            yield Label("[bold]Track Device Over Time[/bold]")
-            yield Label("Monitor individual device performance:")
-            yield Input(placeholder="Device ID (e.g., W13_S1_R1)", id="device_id")
-
-        elif self.command_id == "cmd_4":
-            yield Label("[bold]Compare DFU Row Performance[/bold]")
-            yield Label("Compare performance across DFU rows:")
-            yield Input(placeholder="Device Type (e.g., W13, or leave empty for all)", id="device_type")
-            yield Input(placeholder="Metric (droplet_size_mean or frequency_mean)", id="metric", value="droplet_size_mean")
-
-        elif self.command_id == "cmd_5":
-            yield Label("[bold]Compare Fluid Types[/bold]")
-            yield Label("Compare different fluid combinations:")
-            yield Input(placeholder="Device Type (e.g., W13, or leave empty for all)", id="device_type")
-
-        yield Label("")
-        yield Horizontal(
-            Button("Run Analysis", id="run", variant="success"),
-            Button("Cancel", id="cancel", variant="error"),
-        )
-
 
 class MicrofluidicDashboard(App):
     """Main dashboard application."""
@@ -201,21 +211,19 @@ class MicrofluidicDashboard(App):
         margin: 0 1;
     }
 
-    InputDialog {
-        width: 100%;
-        height: auto;
-        border: solid $accent;
-        background: $surface;
-        padding: 1;
+    CommandTerminal {
+        height: 100%;
     }
 
-    Input {
-        width: 100%;
-        margin: 0 1;
-    }
-
-    ResultDisplay {
+    #terminal_output {
         height: 1fr;
+        border: solid $accent;
+        margin-bottom: 1;
+    }
+
+    #terminal_input {
+        width: 100%;
+        dock: bottom;
     }
 
     DatabaseStatus {
@@ -224,20 +232,14 @@ class MicrofluidicDashboard(App):
     """
 
     BINDINGS = [
-        Binding("1", "command_1", "Compare Devices"),
-        Binding("2", "command_2", "Parameter Effects"),
-        Binding("3", "command_3", "Track Device"),
-        Binding("4", "command_4", "DFU Comparison"),
-        Binding("5", "command_5", "Fluid Comparison"),
-        Binding("6", "command_6", "List Devices"),
         Binding("r", "refresh", "Refresh"),
         Binding("q", "quit", "Quit"),
+        Binding("escape", "focus_terminal", "Focus Terminal"),
     ]
 
     def __init__(self):
         super().__init__()
         self.analyst = DataAnalyst()
-        self.current_dialog = None
 
     def compose(self) -> ComposeResult:
         """Create child widgets for the app."""
@@ -248,8 +250,8 @@ class MicrofluidicDashboard(App):
                 yield DatabaseStatus(self.analyst)
                 yield QuickCommandMenu()
 
-            with ScrollableContainer(id="right-panel"):
-                yield ResultDisplay()
+            with Container(id="right-panel"):
+                yield CommandTerminal(self.analyst)
 
         yield Footer()
 
@@ -258,9 +260,18 @@ class MicrofluidicDashboard(App):
         self.title = "Microfluidic Device Analysis Dashboard"
         self.sub_title = f"{len(self.analyst.df)} measurements loaded"
 
+    def on_input_submitted(self, event: Input.Submitted) -> None:
+        """Handle command input submission."""
+        if event.input.id == "terminal_input":
+            command = event.value.strip()
+            if command:
+                terminal = self.query_one(CommandTerminal)
+                terminal.execute_command(command)
+
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle button clicks."""
         button_id = event.button.id
+        terminal = self.query_one(CommandTerminal)
 
         if button_id == "cmd_exit":
             self.exit()
@@ -268,260 +279,30 @@ class MicrofluidicDashboard(App):
         elif button_id == "cmd_refresh":
             self.action_refresh()
 
+        elif button_id == "cmd_1":
+            # Pre-fill the input for user to customize
+            input_widget = self.query_one("#terminal_input", Input)
+            input_widget.value = "compare devices at "
+            input_widget.focus()
+
+        elif button_id == "cmd_2":
+            input_widget = self.query_one("#terminal_input", Input)
+            input_widget.value = "analyze flowrate effects for W13"
+            input_widget.focus()
+
+        elif button_id == "cmd_3":
+            input_widget = self.query_one("#terminal_input", Input)
+            input_widget.value = "track W13_S1_R1 over time"
+            input_widget.focus()
+
+        elif button_id == "cmd_4":
+            terminal.execute_command("compare DFU row performance")
+
+        elif button_id == "cmd_5":
+            terminal.execute_command("compare fluid types")
+
         elif button_id == "cmd_6":
-            self.action_command_6()
-
-        elif button_id.startswith("cmd_"):
-            self.show_input_dialog(button_id)
-
-        elif button_id == "run":
-            self.run_analysis()
-
-        elif button_id == "cancel":
-            self.hide_input_dialog()
-
-    def show_input_dialog(self, command_id: str) -> None:
-        """Show input dialog for a command."""
-        if self.current_dialog:
-            self.hide_input_dialog()
-
-        dialog = InputDialog(command_id, self.analyst)
-        right_panel = self.query_one("#right-panel")
-        right_panel.mount(dialog)
-        self.current_dialog = dialog
-
-    def hide_input_dialog(self) -> None:
-        """Hide and remove input dialog."""
-        if self.current_dialog:
-            self.current_dialog.remove()
-            self.current_dialog = None
-
-    def run_analysis(self) -> None:
-        """Execute the analysis based on current dialog inputs."""
-        if not self.current_dialog:
-            return
-
-        command_id = self.current_dialog.command_id
-        result_display = self.query_one(ResultDisplay)
-
-        try:
-            if command_id == "cmd_q":
-                self.run_natural_language_query()
-            elif command_id == "cmd_1":
-                self.run_compare_devices()
-            elif command_id == "cmd_2":
-                self.run_parameter_effects()
-            elif command_id == "cmd_3":
-                self.run_track_device()
-            elif command_id == "cmd_4":
-                self.run_dfu_comparison()
-            elif command_id == "cmd_5":
-                self.run_fluid_comparison()
-
-        except Exception as e:
-            result_display.show_result(
-                "Error",
-                f"[red]Analysis failed:[/red]\n{str(e)}\n\n[dim]Check your input parameters and try again.[/dim]"
-            )
-
-        finally:
-            self.hide_input_dialog()
-
-    def run_natural_language_query(self) -> None:
-        """Run natural language query processing."""
-        query_input = self.query_one("#nl_query", Input)
-        query = query_input.value.strip()
-
-        if not query:
-            result_display = self.query_one(ResultDisplay)
-            result_display.show_result(
-                "Empty Query",
-                "[yellow]Please enter a question.[/yellow]\n\n" +
-                "Examples:\n" +
-                "  • 'Compare W13 and W14 devices'\n" +
-                "  • 'Show me devices at 5 ml/hr'\n" +
-                "  • 'Track W13_S1_R1 over time'\n" +
-                "  • 'Analyze pressure effects for W14'\n" +
-                "  • 'Generate a summary report'"
-            )
-            return
-
-        # Process the query
-        result = self.analyst.process_natural_language_query(query)
-
-        # Format the result for display
-        title = f"Query: {query}"
-        content = result.get('message', '')
-
-        # Add data preview if available
-        data = result.get('result')
-        if data is not None and isinstance(data, pd.DataFrame) and len(data) > 0:
-            content += f"\n\n[bold]Data preview:[/bold]\n"
-            content += data.head(5).to_string()
-            if len(data) > 5:
-                content += f"\n\n[dim]... showing 5 of {len(data)} rows[/dim]"
-
-        plot_path = result.get('plot_path')
-        report_path = result.get('report_path')
-
-        # Add report path if present
-        if report_path:
-            content += f"\n\n[bold]Report saved:[/bold] [cyan]{report_path}[/cyan]"
-
-        result_display = self.query_one(ResultDisplay)
-        result_display.show_result(title, content, plot_path)
-
-    def run_compare_devices(self) -> None:
-        """Run device comparison analysis."""
-        device_type_input = self.query_one("#device_type", Input)
-        flowrate_input = self.query_one("#flowrate", Input)
-        pressure_input = self.query_one("#pressure", Input)
-
-        device_type = device_type_input.value.strip() or None
-        flowrate = int(flowrate_input.value) if flowrate_input.value.strip() else None
-        pressure = int(pressure_input.value) if pressure_input.value.strip() else None
-
-        output_path = f"outputs/dashboard_device_comparison_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
-
-        result = self.analyst.compare_devices_at_same_parameters(
-            device_type=device_type,
-            aqueous_flowrate=flowrate,
-            oil_pressure=pressure,
-            output_path=output_path
-        )
-
-        # Format result
-        content = f"Found {len(result)} devices matching criteria:\n\n"
-        content += result.to_string()
-
-        result_display = self.query_one(ResultDisplay)
-        result_display.show_result("Device Comparison Complete", content, output_path)
-
-    def run_parameter_effects(self) -> None:
-        """Run parameter effects analysis."""
-        device_type = self.query_one("#device_type", Input).value.strip()
-        parameter = self.query_one("#parameter", Input).value.strip()
-        metric = self.query_one("#metric", Input).value.strip()
-
-        output_path = f"outputs/dashboard_param_effects_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
-
-        result = self.analyst.analyze_flow_parameter_effects(
-            device_type=device_type,
-            parameter=parameter,
-            metric=metric,
-            output_path=output_path
-        )
-
-        content = f"Correlation: {result['correlation']}\n"
-        content += f"Total measurements: {result['total_measurements']}\n\n"
-        content += "Grouped Statistics:\n"
-        content += result['grouped_stats'].to_string()
-
-        result_display = self.query_one(ResultDisplay)
-        result_display.show_result("Parameter Effects Analysis Complete", content, output_path)
-
-    def run_track_device(self) -> None:
-        """Run device tracking analysis."""
-        device_id = self.query_one("#device_id", Input).value.strip()
-
-        output_path = f"outputs/dashboard_tracking_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
-
-        result = self.analyst.track_device_over_time(
-            device_id=device_id,
-            output_path=output_path
-        )
-
-        content = f"Tracked {len(result)} tests for device {device_id}\n\n"
-        content += f"Date range: {result['testing_date'].min()} to {result['testing_date'].max()}\n\n"
-        content += "Summary:\n"
-        content += f"  Mean droplet size: {result['droplet_size_mean'].mean():.2f} µm\n"
-        content += f"  Std deviation: {result['droplet_size_mean'].std():.2f} µm\n"
-        content += f"  Min/Max: {result['droplet_size_mean'].min():.2f} - {result['droplet_size_mean'].max():.2f} µm\n"
-
-        result_display = self.query_one(ResultDisplay)
-        result_display.show_result("Device Tracking Complete", content, output_path)
-
-    def run_dfu_comparison(self) -> None:
-        """Run DFU row comparison analysis."""
-        device_type_input = self.query_one("#device_type", Input)
-        metric_input = self.query_one("#metric", Input)
-
-        device_type = device_type_input.value.strip() or None
-        metric = metric_input.value.strip()
-
-        output_path = f"outputs/dashboard_dfu_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
-
-        result = self.analyst.compare_dfu_row_performance(
-            device_type=device_type,
-            metric=metric,
-            output_path=output_path
-        )
-
-        content = f"Compared {len(result)} DFU rows\n\n"
-        content += result.to_string()
-
-        result_display = self.query_one(ResultDisplay)
-        result_display.show_result("DFU Row Comparison Complete", content, output_path)
-
-    def run_fluid_comparison(self) -> None:
-        """Run fluid type comparison analysis."""
-        device_type_input = self.query_one("#device_type", Input)
-        device_type = device_type_input.value.strip() or None
-
-        output_path = f"outputs/dashboard_fluids_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
-
-        result = self.analyst.compare_fluid_types(
-            device_type=device_type,
-            output_path=output_path
-        )
-
-        content = f"Compared {len(result)} fluid combinations\n\n"
-        content += result.to_string()
-
-        result_display = self.query_one(ResultDisplay)
-        result_display.show_result("Fluid Comparison Complete", content, output_path)
-
-    def action_command_1(self) -> None:
-        """Keyboard shortcut for command 1."""
-        self.show_input_dialog("cmd_1")
-
-    def action_command_2(self) -> None:
-        """Keyboard shortcut for command 2."""
-        self.show_input_dialog("cmd_2")
-
-    def action_command_3(self) -> None:
-        """Keyboard shortcut for command 3."""
-        self.show_input_dialog("cmd_3")
-
-    def action_command_4(self) -> None:
-        """Keyboard shortcut for command 4."""
-        self.show_input_dialog("cmd_4")
-
-    def action_command_5(self) -> None:
-        """Keyboard shortcut for command 5."""
-        self.show_input_dialog("cmd_5")
-
-    def action_command_6(self) -> None:
-        """Show list of all available devices."""
-        devices = self.analyst.df.groupby('device_id').agg({
-            'device_type': 'first',
-            'testing_date': ['min', 'max'],
-            'droplet_size_mean': 'count'
-        })
-
-        content = "All devices in database:\n\n"
-        for device_id in devices.index:
-            device_type = devices.loc[device_id, ('device_type', 'first')]
-            min_date = devices.loc[device_id, ('testing_date', 'min')]
-            max_date = devices.loc[device_id, ('testing_date', 'max')]
-            count = devices.loc[device_id, ('droplet_size_mean', 'count')]
-
-            content += f"[bold]{device_id}[/bold] ({device_type})\n"
-            content += f"  Tests: {count}\n"
-            content += f"  Date range: {min_date} to {max_date}\n\n"
-
-        result_display = self.query_one(ResultDisplay)
-        result_display.show_result("Available Devices", content)
+            terminal.execute_command("list all devices")
 
     def action_refresh(self) -> None:
         """Refresh database and status display."""
@@ -529,11 +310,17 @@ class MicrofluidicDashboard(App):
         status_widget = self.query_one(DatabaseStatus)
         status_widget.update_status()
 
-        result_display = self.query_one(ResultDisplay)
-        result_display.show_result(
-            "Database Refreshed",
-            f"Reloaded {len(self.analyst.df)} records from database.\n\n[green]Status updated successfully![/green]"
-        )
+        terminal = self.query_one(CommandTerminal)
+        output = terminal.query_one("#terminal_output", RichLog)
+        output.write(f"[bold green][Database Refreshed][/bold green]")
+        output.write(f"Reloaded {len(self.analyst.df)} records from database.")
+        output.write(f"[green]Status updated successfully![/green]")
+        output.write("")
+
+    def action_focus_terminal(self) -> None:
+        """Focus the terminal input."""
+        input_widget = self.query_one("#terminal_input", Input)
+        input_widget.focus()
 
 
 def main():
