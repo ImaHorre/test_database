@@ -291,57 +291,57 @@ def format_query_help() -> str:
     """Generate help text for query syntax."""
     return """
 Natural Language Query Help
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+==================================================
 
 You can ask questions in natural language. Here are some examples:
 
 COMPARISONS:
-  • "Compare W13 and W14 devices"
-  • "Compare devices at 5 ml/hr flowrate"
-  • "Show me the difference between W13 and W14"
-  • "Compare all devices at 500 mbar pressure"
+  - "Compare W13 and W14 devices"
+  - "Compare devices at 5 ml/hr flowrate"
+  - "Show me the difference between W13 and W14"
+  - "Compare all devices at 500 mbar pressure"
 
 FILTERING:
-  • "Show me all W13 devices"
-  • "Filter by flowrate 5 ml/hr"
-  • "Find devices with NaCas fluid"
-  • "Show me devices at 5 ml/hr and 500 mbar"
+  - "Show me all W13 devices"
+  - "Filter by flowrate 5 ml/hr"
+  - "Find devices with NaCas fluid"
+  - "Show me devices at 5 ml/hr and 500 mbar"
 
 ANALYSIS:
-  • "Analyze flowrate effects for W13"
-  • "What's the effect of pressure on droplet size?"
-  • "Show correlation between flowrate and droplet size"
-  • "Analyze parameter effects for W14"
+  - "Analyze flowrate effects for W13"
+  - "What's the effect of pressure on droplet size?"
+  - "Show correlation between flowrate and droplet size"
+  - "Analyze parameter effects for W14"
 
 TRACKING:
-  • "Track W13_S1_R1 over time"
-  • "Show device history for W13_S1_R2"
-  • "Monitor W14_S1_R1 performance"
-  • "How has W13_S1_R1 performed over time?"
+  - "Track W13_S1_R1 over time"
+  - "Show device history for W13_S1_R2"
+  - "Monitor W14_S1_R1 performance"
+  - "How has W13_S1_R1 performed over time?"
 
 PLOTTING:
-  • "Plot device type comparison"
-  • "Visualize flowrate effects"
-  • "Create a graph of W13 vs W14"
-  • "Plot DFU row performance"
+  - "Plot device type comparison"
+  - "Visualize flowrate effects"
+  - "Create a graph of W13 vs W14"
+  - "Plot DFU row performance"
 
 REPORTING:
-  • "Generate a summary report"
-  • "Create a report"
-  • "Summarize the data"
+  - "Generate a summary report"
+  - "Create a report"
+  - "Summarize the data"
 
 LISTING:
-  • "List all devices"
-  • "What devices are available?"
-  • "Show me all device types"
-  • "Which devices have been tested?"
+  - "List all devices"
+  - "What devices are available?"
+  - "Show me all device types"
+  - "Which devices have been tested?"
 
 TIPS:
-  • Be specific about device types (W13, W14) when possible
-  • Include flow parameters (e.g., "5 ml/hr", "500 mbar") for better filtering
-  • You can combine multiple criteria (e.g., "Compare W13 devices at 5 ml/hr")
-  • If the query is unclear, I'll ask clarifying questions
+  - Be specific about device types (W13, W14) when possible
+  - Include flow parameters (e.g., "5 ml/hr", "500 mbar") for better filtering
+  - You can combine multiple criteria (e.g., "Compare W13 devices at 5 ml/hr")
+  - If the query is unclear, I'll ask clarifying questions
 
 TYPE 'help' TO SEE THIS MESSAGE AGAIN
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+==================================================
 """

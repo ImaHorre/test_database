@@ -90,7 +90,7 @@ class QuickCommandMenu(Static):
         yield Button("[5] Compare Fluid Types", id="cmd_5", variant="primary")
         yield Button("[6] View All Available Devices", id="cmd_6", variant="success")
         yield Label("")
-        yield Button("[Q] Ask a Question (Natural Language) [Coming Soon]", id="cmd_q", variant="warning", disabled=True)
+        yield Button("[Q] Ask a Question (Natural Language)", id="cmd_q", variant="warning")
         yield Label("")
         yield Button("[R] Refresh Database", id="cmd_refresh", variant="default")
         yield Button("[X] Exit", id="cmd_exit", variant="error")
@@ -127,7 +127,13 @@ class InputDialog(Container):
     def compose(self) -> ComposeResult:
         """Create input fields based on command."""
 
-        if self.command_id == "cmd_1":
+        if self.command_id == "cmd_q":
+            yield Label("[bold]Natural Language Query[/bold]")
+            yield Label("Ask a question in plain English:")
+            yield Label("[dim]Examples: 'Compare W13 and W14', 'Track W13_S1_R1', 'Analyze flowrate effects for W13'[/dim]")
+            yield Input(placeholder="Enter your question...", id="nl_query")
+
+        elif self.command_id == "cmd_1":
             yield Label("[bold]Compare Devices at Same Parameters[/bold]")
             yield Label("Filter devices tested under same conditions:")
             yield Input(placeholder="Device Type (e.g., W13, W14, or leave empty)", id="device_type")
@@ -299,7 +305,9 @@ class MicrofluidicDashboard(App):
         result_display = self.query_one(ResultDisplay)
 
         try:
-            if command_id == "cmd_1":
+            if command_id == "cmd_q":
+                self.run_natural_language_query()
+            elif command_id == "cmd_1":
                 self.run_compare_devices()
             elif command_id == "cmd_2":
                 self.run_parameter_effects()
@@ -318,6 +326,50 @@ class MicrofluidicDashboard(App):
 
         finally:
             self.hide_input_dialog()
+
+    def run_natural_language_query(self) -> None:
+        """Run natural language query processing."""
+        query_input = self.query_one("#nl_query", Input)
+        query = query_input.value.strip()
+
+        if not query:
+            result_display = self.query_one(ResultDisplay)
+            result_display.show_result(
+                "Empty Query",
+                "[yellow]Please enter a question.[/yellow]\n\n" +
+                "Examples:\n" +
+                "  • 'Compare W13 and W14 devices'\n" +
+                "  • 'Show me devices at 5 ml/hr'\n" +
+                "  • 'Track W13_S1_R1 over time'\n" +
+                "  • 'Analyze pressure effects for W14'\n" +
+                "  • 'Generate a summary report'"
+            )
+            return
+
+        # Process the query
+        result = self.analyst.process_natural_language_query(query)
+
+        # Format the result for display
+        title = f"Query: {query}"
+        content = result.get('message', '')
+
+        # Add data preview if available
+        data = result.get('result')
+        if data is not None and isinstance(data, pd.DataFrame) and len(data) > 0:
+            content += f"\n\n[bold]Data preview:[/bold]\n"
+            content += data.head(5).to_string()
+            if len(data) > 5:
+                content += f"\n\n[dim]... showing 5 of {len(data)} rows[/dim]"
+
+        plot_path = result.get('plot_path')
+        report_path = result.get('report_path')
+
+        # Add report path if present
+        if report_path:
+            content += f"\n\n[bold]Report saved:[/bold] [cyan]{report_path}[/cyan]"
+
+        result_display = self.query_one(ResultDisplay)
+        result_display.show_result(title, content, plot_path)
 
     def run_compare_devices(self) -> None:
         """Run device comparison analysis."""

@@ -14,6 +14,7 @@ import logging
 from pathlib import Path
 
 from .csv_manager import CSVManager
+from .query_processor import QueryProcessor, format_query_help
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -39,6 +40,9 @@ class DataAnalyst:
         """
         self.manager = csv_manager or CSVManager()
         # Note: Always access data via self.manager.df to avoid stale references
+
+        # Initialize query processor for natural language queries
+        self.query_processor = QueryProcessor()
 
         # Set up plotting style
         sns.set_style("whitegrid")
@@ -879,62 +883,304 @@ class DataAnalyst:
         """
         Process natural language queries and route to appropriate analysis methods.
 
-        This is a placeholder for future NLP integration with Claude Code.
-        The method will interpret user queries in natural language and automatically
-        call the appropriate analysis methods with correct parameters.
-
         Natural language examples:
         - "Compare W13 and W14 devices"
         - "Show me flow parameters for W13 at 5 ml/hr"
-        - "Plot device history for W13_S1_R2"
+        - "Track device W13_S1_R2 over time"
         - "Generate a summary report"
+        - "Analyze flowrate effects for W13"
 
         Args:
             query: Natural language query string
 
         Returns:
             Dictionary containing:
-            - 'method': Name of method that should be called
-            - 'params': Dictionary of parameters for that method
-            - 'result': Actual result (when implemented)
-
-        TODO: Implement NLP parsing logic
-        TODO: Map query intents to method calls
-        TODO: Extract parameters from natural language
-        TODO: Handle ambiguous queries with clarifying questions
-        TODO: Support multi-step analysis workflows
-
-        Example implementation approach:
-        1. Parse query to identify intent (compare, filter, plot, report)
-        2. Extract entities (device types, flow params, device IDs)
-        3. Map to appropriate method with parameters
-        4. Execute and return results
-        5. For unclear queries, use AskUserQuestion tool
-
-        Integration notes:
-        - This method will be called from main Claude Code chat
-        - Results can be DataFrames, plot paths, or formatted text
-        - Error messages should be user-friendly
-        - Support chaining multiple operations
+            - 'status': 'success', 'clarification_needed', or 'error'
+            - 'intent': Detected intent type
+            - 'result': Analysis result (DataFrame, plot path, or text)
+            - 'message': Human-readable message
+            - 'clarification': Optional clarifying question
+            - 'plot_path': Path to generated plot (if applicable)
         """
-        # Placeholder implementation
+        from datetime import datetime
+
         logger.info(f"Processing natural language query: {query}")
 
-        # TODO: Implement actual NLP processing
-        # For now, return structure showing what will be implemented
+        # Handle help queries
+        if query.lower().strip() in ['help', '?', 'how', 'what can i ask']:
+            return {
+                'status': 'success',
+                'intent': 'help',
+                'message': format_query_help(),
+                'result': None
+            }
+
+        # Process the query to get intent and entities
+        intent = self.query_processor.process_query(query)
+
+        # Check if clarification is needed
+        clarification = self.query_processor.suggest_clarification(intent)
+        if clarification and intent.confidence < 0.7:
+            return {
+                'status': 'clarification_needed',
+                'intent': intent.intent_type,
+                'message': clarification,
+                'clarification': clarification,
+                'result': None
+            }
+
+        # Route to appropriate method based on intent
+        try:
+            if intent.intent_type == 'list':
+                return self._handle_list_query(intent)
+
+            elif intent.intent_type == 'filter':
+                return self._handle_filter_query(intent)
+
+            elif intent.intent_type == 'compare':
+                return self._handle_compare_query(intent)
+
+            elif intent.intent_type == 'analyze':
+                return self._handle_analyze_query(intent)
+
+            elif intent.intent_type == 'track':
+                return self._handle_track_query(intent)
+
+            elif intent.intent_type == 'plot':
+                return self._handle_plot_query(intent)
+
+            elif intent.intent_type == 'report':
+                return self._handle_report_query(intent)
+
+            else:
+                return {
+                    'status': 'error',
+                    'intent': intent.intent_type,
+                    'message': f"I'm not sure how to handle '{query}'. Try asking for 'help' to see examples.",
+                    'result': None
+                }
+
+        except Exception as e:
+            logger.error(f"Error processing query: {e}", exc_info=True)
+            return {
+                'status': 'error',
+                'intent': intent.intent_type,
+                'message': f"An error occurred: {str(e)}",
+                'result': None
+            }
+
+    def _handle_list_query(self, intent) -> Dict:
+        """Handle 'list' intent queries."""
+        devices = self.df.groupby('device_id').agg({
+            'device_type': 'first',
+            'testing_date': ['min', 'max'],
+            'droplet_size_mean': 'count'
+        }).reset_index()
+
+        message = "Available devices:\n\n"
+        for _, row in devices.iterrows():
+            device_id = row[('device_id', '')]
+            device_type = row[('device_type', 'first')]
+            count = row[('droplet_size_mean', 'count')]
+            message += f"  - {device_id} ({device_type}) - {count} measurements\n"
+
         return {
-            'status': 'not_implemented',
-            'query': query,
-            'message': 'NLP integration coming soon. Use direct method calls for now.',
-            'available_methods': [
-                'filter_by_device_type(device_type)',
-                'filter_by_flow_parameters(aqueous_flowrate, oil_pressure)',
-                'compare_device_types(device_types)',
-                'get_device_history(device_id)',
-                'plot_device_type_comparison(device_types, output_path)',
-                'plot_flow_parameter_analysis(device_type, output_path)',
-                'generate_summary_report(output_path)'
+            'status': 'success',
+            'intent': 'list',
+            'message': message,
+            'result': devices
+        }
+
+    def _handle_filter_query(self, intent) -> Dict:
+        """Handle 'filter' intent queries."""
+        filtered_df = self.df.copy()
+
+        # Apply filters from extracted entities
+        if 'device_type' in intent.entities:
+            filtered_df = filtered_df[filtered_df['device_type'] == intent.entities['device_type']]
+
+        if 'flowrate' in intent.entities:
+            filtered_df = filtered_df[filtered_df['aqueous_flowrate'] == intent.entities['flowrate']]
+
+        if 'pressure' in intent.entities:
+            filtered_df = filtered_df[filtered_df['oil_pressure'] == intent.entities['pressure']]
+
+        if 'fluid' in intent.entities:
+            # Check both aqueous and oil fluid columns
+            fluid = intent.entities['fluid']
+            filtered_df = filtered_df[
+                (filtered_df['aqueous_fluid'] == fluid) | (filtered_df['oil_fluid'] == fluid)
             ]
+
+        message = f"Found {len(filtered_df)} measurements matching your criteria.\n\n"
+        message += f"Filters applied: {', '.join(f'{k}={v}' for k, v in intent.entities.items())}"
+
+        return {
+            'status': 'success',
+            'intent': 'filter',
+            'message': message,
+            'result': filtered_df
+        }
+
+    def _handle_compare_query(self, intent) -> Dict:
+        """Handle 'compare' intent queries."""
+        from datetime import datetime
+
+        # Generate output path
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        output_path = f"outputs/analyst/plots/nl_query_compare_{timestamp}.png"
+
+        # Call appropriate comparison method
+        device_type = intent.entities.get('device_type')
+        flowrate = intent.entities.get('flowrate')
+        pressure = intent.entities.get('pressure')
+
+        result = self.compare_devices_at_same_parameters(
+            device_type=device_type,
+            aqueous_flowrate=flowrate,
+            oil_pressure=pressure,
+            output_path=output_path
+        )
+
+        message = f"Comparison complete! Found {len(result)} devices.\n\n"
+        if device_type:
+            message += f"Device type: {device_type}\n"
+        if flowrate:
+            message += f"Flowrate: {flowrate} ml/hr\n"
+        if pressure:
+            message += f"Pressure: {pressure} mbar\n"
+
+        return {
+            'status': 'success',
+            'intent': 'compare',
+            'message': message,
+            'result': result,
+            'plot_path': output_path
+        }
+
+    def _handle_analyze_query(self, intent) -> Dict:
+        """Handle 'analyze' intent queries."""
+        from datetime import datetime
+
+        device_type = intent.entities.get('device_type')
+        if not device_type:
+            return {
+                'status': 'clarification_needed',
+                'intent': 'analyze',
+                'message': "Which device type would you like to analyze? (W13 or W14)",
+                'clarification': "Please specify a device type",
+                'result': None
+            }
+
+        # Determine parameter to analyze (flowrate or pressure)
+        parameter = 'aqueous_flowrate' if 'flowrate' in intent.entities else 'oil_pressure'
+        metric = intent.entities.get('metric', 'droplet_size_mean')
+
+        # Generate output path
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        output_path = f"outputs/analyst/plots/nl_query_analysis_{timestamp}.png"
+
+        result = self.analyze_flow_parameter_effects(
+            device_type=device_type,
+            parameter=parameter,
+            metric=metric,
+            output_path=output_path
+        )
+
+        message = f"Analysis complete for {device_type}!\n\n"
+        message += f"Parameter: {parameter}\n"
+        message += f"Metric: {metric}\n"
+        message += f"Correlation: {result['correlation']:.3f}\n"
+        message += f"Total measurements: {result['total_measurements']}\n"
+
+        return {
+            'status': 'success',
+            'intent': 'analyze',
+            'message': message,
+            'result': result,
+            'plot_path': output_path
+        }
+
+    def _handle_track_query(self, intent) -> Dict:
+        """Handle 'track' intent queries."""
+        from datetime import datetime
+
+        device_id = intent.entities.get('device_id')
+        if not device_id:
+            return {
+                'status': 'clarification_needed',
+                'intent': 'track',
+                'message': "Which device would you like to track? (e.g., W13_S1_R1)",
+                'clarification': "Please specify a device ID",
+                'result': None
+            }
+
+        # Generate output path
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        output_path = f"outputs/analyst/plots/nl_query_track_{timestamp}.png"
+
+        result = self.track_device_over_time(
+            device_id=device_id,
+            output_path=output_path
+        )
+
+        if len(result) == 0:
+            return {
+                'status': 'error',
+                'intent': 'track',
+                'message': f"No data found for device {device_id}",
+                'result': None
+            }
+
+        message = f"Tracking results for {device_id}:\n\n"
+        message += f"Total tests: {len(result)}\n"
+        message += f"Date range: {result['testing_date'].min()} to {result['testing_date'].max()}\n"
+        message += f"Mean droplet size: {result['droplet_size_mean'].mean():.2f} µm\n"
+
+        return {
+            'status': 'success',
+            'intent': 'track',
+            'message': message,
+            'result': result,
+            'plot_path': output_path
+        }
+
+    def _handle_plot_query(self, intent) -> Dict:
+        """Handle 'plot' intent queries."""
+        # Route to appropriate plot based on entities
+        if 'device_id' in intent.entities:
+            return self._handle_track_query(intent)
+        elif 'device_type' in intent.entities:
+            if 'flowrate' in intent.entities or 'pressure' in intent.entities:
+                return self._handle_analyze_query(intent)
+            else:
+                return self._handle_compare_query(intent)
+        else:
+            return {
+                'status': 'clarification_needed',
+                'intent': 'plot',
+                'message': "What would you like to plot? Try specifying a device type, device ID, or parameters.",
+                'clarification': "Please provide more details for the plot",
+                'result': None
+            }
+
+    def _handle_report_query(self, intent) -> Dict:
+        """Handle 'report' intent queries."""
+        from datetime import datetime
+
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        output_path = f"outputs/nl_query_report_{timestamp}.txt"
+
+        self.generate_summary_report(output_path=output_path)
+
+        message = f"Summary report generated!\n\nSaved to: {output_path}"
+
+        return {
+            'status': 'success',
+            'intent': 'report',
+            'message': message,
+            'result': None,
+            'report_path': output_path
         }
 
 
