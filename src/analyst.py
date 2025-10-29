@@ -6,6 +6,7 @@ Provides interactive guidance and dynamic plotting capabilities.
 """
 
 import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 from typing import Dict, List, Optional
@@ -174,6 +175,13 @@ class DataAnalyst:
             try:
                 filtered = self.filter_by_device_type(device_type)
 
+                # Get date range, handling potential NaN or mixed types
+                date_col = pd.to_datetime(filtered['testing_date'], errors='coerce')
+                date_col_clean = date_col.dropna()
+                date_range_str = 'N/A'
+                if len(date_col_clean) > 0:
+                    date_range_str = f"{date_col_clean.min().strftime('%Y-%m-%d')} to {date_col_clean.max().strftime('%Y-%m-%d')}"
+
                 comparison = {
                     'device_type': device_type,
                     'total_measurements': len(filtered),
@@ -181,7 +189,7 @@ class DataAnalyst:
                     'unique_tests': filtered.groupby([
                         'device_id', 'testing_date', 'aqueous_flowrate', 'oil_pressure'
                     ]).ngroups if len(filtered) > 0 else 0,
-                    'date_range': f"{filtered['testing_date'].min()} to {filtered['testing_date'].max()}" if len(filtered) > 0 else 'N/A'
+                    'date_range': date_range_str
                 }
                 results.append(comparison)
             except ValueError as e:
@@ -430,6 +438,442 @@ class DataAnalyst:
         except Exception as e:
             logger.error(f"Failed to generate summary report: {e}")
             raise
+
+    # ========================================================================
+    # COMMON ANALYSIS METHODS - Phase 1
+    # ========================================================================
+
+    def compare_devices_at_same_parameters(
+        self,
+        device_type: Optional[str] = None,
+        aqueous_flowrate: Optional[int] = None,
+        oil_pressure: Optional[int] = None,
+        output_path: str = 'outputs/device_comparison_same_params.png'
+    ) -> pd.DataFrame:
+        """
+        Compare all devices tested at the same flow parameters.
+
+        Use Case: "Show me all W13 devices tested at 5ml/hr and 200mbar"
+        or "Compare all devices at 30ml/hr regardless of pressure"
+
+        Args:
+            device_type: Optional filter to specific device type (W13, W14)
+            aqueous_flowrate: Aqueous flowrate in ml/hr
+            oil_pressure: Oil pressure in mbar
+            output_path: Where to save comparison plot
+
+        Returns:
+            DataFrame with comparison statistics
+
+        Raises:
+            ValueError: If no devices found at specified parameters
+        """
+        # Filter data
+        result = self.df.copy()
+
+        if device_type:
+            result = result[result['device_type'] == device_type]
+
+        if aqueous_flowrate is not None:
+            result = result[result['aqueous_flowrate'] == aqueous_flowrate]
+
+        if oil_pressure is not None:
+            result = result[result['oil_pressure'] == oil_pressure]
+
+        if len(result) == 0:
+            raise ValueError(
+                f"No devices found with specified parameters "
+                f"(type={device_type}, flowrate={aqueous_flowrate}, pressure={oil_pressure})"
+            )
+
+        # Group by device and calculate statistics
+        comparison = result.groupby('device_id').agg({
+            'droplet_size_mean': ['mean', 'std', 'count'],
+            'frequency_mean': ['mean', 'std', 'count'],
+            'testing_date': ['min', 'max']
+        }).round(3)
+
+        comparison.columns = ['_'.join(col).strip() for col in comparison.columns.values]
+
+        logger.info(f"Compared {len(comparison)} devices at specified parameters")
+
+        # Create visualization
+        self._plot_device_comparison_boxplot(result, output_path)
+
+        return comparison
+
+    def analyze_flow_parameter_effects(
+        self,
+        device_type: str,
+        parameter: str = 'aqueous_flowrate',
+        metric: str = 'droplet_size_mean',
+        output_path: str = 'outputs/parameter_effects.png'
+    ) -> Dict:
+        """
+        Analyze how flow parameters affect measurement metrics.
+
+        Use Case: "How does aqueous flowrate affect droplet size in W13 devices?"
+        or "What's the relationship between oil pressure and droplet frequency?"
+
+        Args:
+            device_type: Device type to analyze (W13, W14)
+            parameter: 'aqueous_flowrate' or 'oil_pressure'
+            metric: 'droplet_size_mean', 'frequency_mean', etc.
+            output_path: Where to save analysis plot
+
+        Returns:
+            Dictionary with correlation statistics and summary
+
+        Raises:
+            ValueError: If invalid parameter or metric specified
+        """
+        valid_parameters = ['aqueous_flowrate', 'oil_pressure']
+        valid_metrics = ['droplet_size_mean', 'droplet_size_std', 'frequency_mean']
+
+        if parameter not in valid_parameters:
+            raise ValueError(f"Parameter must be one of {valid_parameters}")
+
+        if metric not in valid_metrics:
+            raise ValueError(f"Metric must be one of {valid_metrics}")
+
+        # Filter to device type
+        data = self.filter_by_device_type(device_type)
+
+        # Remove NaN values
+        clean_data = data[[parameter, metric]].dropna()
+
+        if len(clean_data) == 0:
+            raise ValueError(f"No data available for {parameter} vs {metric}")
+
+        # Calculate correlation
+        correlation = clean_data[parameter].corr(clean_data[metric])
+
+        # Group by parameter values and calculate statistics
+        grouped = data.groupby(parameter)[metric].agg(['mean', 'std', 'count']).round(3)
+
+        # Create visualization
+        fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+
+        # Scatter plot with trend line
+        axes[0].scatter(clean_data[parameter], clean_data[metric], alpha=0.6)
+        z = np.polyfit(clean_data[parameter], clean_data[metric], 1)
+        p = np.poly1d(z)
+        axes[0].plot(clean_data[parameter], p(clean_data[parameter]), "r--", alpha=0.8)
+        axes[0].set_xlabel(parameter.replace('_', ' ').title(), fontweight='bold')
+        axes[0].set_ylabel(metric.replace('_', ' ').title(), fontweight='bold')
+        axes[0].set_title(f'{device_type}: {parameter} vs {metric}\nCorrelation: {correlation:.3f}',
+                         fontweight='bold')
+        axes[0].grid(True, alpha=0.3)
+
+        # Box plot by parameter value
+        data.boxplot(column=metric, by=parameter, ax=axes[1])
+        axes[1].set_xlabel(parameter.replace('_', ' ').title(), fontweight='bold')
+        axes[1].set_ylabel(metric.replace('_', ' ').title(), fontweight='bold')
+        axes[1].set_title(f'{device_type}: {metric} Distribution', fontweight='bold')
+        plt.suptitle('')  # Remove default title
+
+        plt.tight_layout()
+        Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+        plt.savefig(output_path, bbox_inches='tight')
+        logger.info(f"Parameter effect plot saved: {output_path}")
+        plt.close()
+
+        analysis = {
+            'device_type': device_type,
+            'parameter': parameter,
+            'metric': metric,
+            'correlation': round(correlation, 3),
+            'grouped_stats': grouped,
+            'total_measurements': len(clean_data),
+            'plot_path': output_path
+        }
+
+        logger.info(f"Parameter effect analysis complete: correlation = {correlation:.3f}")
+
+        return analysis
+
+    def track_device_over_time(
+        self,
+        device_id: str,
+        output_path: str = 'outputs/device_temporal_tracking.png'
+    ) -> pd.DataFrame:
+        """
+        Track how a specific device performs across different test dates and conditions.
+
+        Use Case: "Show me how W13_S1_R1 performed over time"
+        or "Did W13_S1_R1 improve or degrade across test dates?"
+
+        Args:
+            device_id: Full device ID (e.g., 'W13_S1_R1')
+            output_path: Where to save tracking plot
+
+        Returns:
+            DataFrame with temporal tracking data sorted by date
+
+        Raises:
+            ValueError: If device not found
+        """
+        history = self.get_device_history(device_id)
+
+        if len(history) == 0:
+            raise ValueError(f"No data found for device {device_id}")
+
+        # Convert testing_date to datetime for proper sorting
+        history['testing_date_dt'] = pd.to_datetime(history['testing_date'], errors='coerce')
+        history_sorted = history.sort_values('testing_date_dt')
+
+        # Create comprehensive temporal plot
+        fig, axes = plt.subplots(2, 2, figsize=(16, 12))
+
+        # Plot 1: Droplet size over time
+        for idx, row in history_sorted.iterrows():
+            label = f"{row['aqueous_flowrate']}ml/hr, {row['oil_pressure']}mbar"
+            axes[0, 0].scatter(row['testing_date_dt'], row['droplet_size_mean'],
+                             s=100, alpha=0.7, label=label)
+
+        axes[0, 0].set_xlabel('Test Date', fontweight='bold')
+        axes[0, 0].set_ylabel('Droplet Size Mean (µm)', fontweight='bold')
+        axes[0, 0].set_title(f'{device_id}: Droplet Size Over Time', fontweight='bold')
+        axes[0, 0].grid(True, alpha=0.3)
+        axes[0, 0].tick_params(axis='x', rotation=45)
+
+        # Plot 2: Frequency over time
+        freq_data = history_sorted.dropna(subset=['frequency_mean'])
+        if len(freq_data) > 0:
+            for idx, row in freq_data.iterrows():
+                label = f"{row['aqueous_flowrate']}ml/hr, {row['oil_pressure']}mbar"
+                axes[0, 1].scatter(row['testing_date_dt'], row['frequency_mean'],
+                                 s=100, alpha=0.7, label=label)
+
+            axes[0, 1].set_xlabel('Test Date', fontweight='bold')
+            axes[0, 1].set_ylabel('Frequency Mean (Hz)', fontweight='bold')
+            axes[0, 1].set_title(f'{device_id}: Frequency Over Time', fontweight='bold')
+            axes[0, 1].grid(True, alpha=0.3)
+            axes[0, 1].tick_params(axis='x', rotation=45)
+
+        # Plot 3: Flow parameters tested
+        param_counts = history_sorted.groupby(['aqueous_flowrate', 'oil_pressure']).size()
+        param_labels = [f"{fr}ml/hr\n{pr}mbar" for fr, pr in param_counts.index]
+        axes[1, 0].bar(range(len(param_counts)), param_counts.values)
+        axes[1, 0].set_xticks(range(len(param_counts)))
+        axes[1, 0].set_xticklabels(param_labels, rotation=45, ha='right')
+        axes[1, 0].set_ylabel('Number of Tests', fontweight='bold')
+        axes[1, 0].set_title(f'{device_id}: Flow Parameters Tested', fontweight='bold')
+        axes[1, 0].grid(True, alpha=0.3, axis='y')
+
+        # Plot 4: Summary statistics table
+        axes[1, 1].axis('off')
+        summary_text = f"""
+        Device: {device_id}
+        Device Type: {history['device_type'].iloc[0]}
+
+        Total Tests: {len(history)}
+        Date Range: {history_sorted['testing_date'].min()} to {history_sorted['testing_date'].max()}
+
+        Droplet Size:
+          Mean: {history['droplet_size_mean'].mean():.2f} µm
+          Std: {history['droplet_size_mean'].std():.2f} µm
+          Range: {history['droplet_size_mean'].min():.2f} - {history['droplet_size_mean'].max():.2f} µm
+
+        Flow Conditions Tested: {len(param_counts)}
+        """
+        axes[1, 1].text(0.1, 0.5, summary_text, fontsize=12, family='monospace',
+                       verticalalignment='center')
+
+        plt.tight_layout()
+        Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+        plt.savefig(output_path, bbox_inches='tight')
+        logger.info(f"Temporal tracking plot saved: {output_path}")
+        plt.close()
+
+        logger.info(f"Device {device_id} tracked across {len(history)} tests")
+
+        return history_sorted
+
+    def compare_dfu_row_performance(
+        self,
+        device_type: Optional[str] = None,
+        metric: str = 'droplet_size_mean',
+        output_path: str = 'outputs/dfu_row_comparison.png'
+    ) -> pd.DataFrame:
+        """
+        Compare performance across different DFU rows.
+
+        Use Case: "Which DFU rows perform best for W13 devices?"
+        or "Is there variation between DFU rows?"
+
+        Args:
+            device_type: Optional filter to specific device type
+            metric: Metric to compare ('droplet_size_mean', 'frequency_mean', etc.)
+            output_path: Where to save comparison plot
+
+        Returns:
+            DataFrame with DFU row statistics
+
+        Raises:
+            ValueError: If no DFU data available
+        """
+        data = self.df.copy()
+
+        if device_type:
+            data = data[data['device_type'] == device_type]
+
+        if len(data) == 0:
+            raise ValueError(f"No data found for device type {device_type}")
+
+        # Filter to rows with DFU data
+        dfu_data = data.dropna(subset=['dfu_row', metric])
+
+        if len(dfu_data) == 0:
+            raise ValueError(f"No DFU row data available for metric {metric}")
+
+        # Calculate statistics by DFU row
+        dfu_stats = dfu_data.groupby('dfu_row')[metric].agg([
+            'mean', 'std', 'min', 'max', 'count'
+        ]).round(3)
+
+        # Create visualization
+        fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+
+        # Box plot
+        dfu_data.boxplot(column=metric, by='dfu_row', ax=axes[0])
+        axes[0].set_xlabel('DFU Row', fontweight='bold')
+        axes[0].set_ylabel(metric.replace('_', ' ').title(), fontweight='bold')
+        title_suffix = f' ({device_type})' if device_type else ''
+        axes[0].set_title(f'DFU Row Performance{title_suffix}', fontweight='bold')
+        plt.suptitle('')
+
+        # Bar plot of means with error bars
+        dfu_rows = dfu_stats.index
+        means = dfu_stats['mean']
+        stds = dfu_stats['std']
+
+        axes[1].bar(dfu_rows, means, yerr=stds, capsize=5, alpha=0.7)
+        axes[1].set_xlabel('DFU Row', fontweight='bold')
+        axes[1].set_ylabel(f'{metric.replace("_", " ").title()} (Mean ± Std)', fontweight='bold')
+        axes[1].set_title(f'DFU Row Averages{title_suffix}', fontweight='bold')
+        axes[1].grid(True, alpha=0.3, axis='y')
+
+        plt.tight_layout()
+        Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+        plt.savefig(output_path, bbox_inches='tight')
+        logger.info(f"DFU comparison plot saved: {output_path}")
+        plt.close()
+
+        logger.info(f"Compared {len(dfu_stats)} DFU rows")
+
+        return dfu_stats
+
+    def compare_fluid_types(
+        self,
+        device_type: Optional[str] = None,
+        output_path: str = 'outputs/fluid_comparison.png'
+    ) -> pd.DataFrame:
+        """
+        Compare device performance across different fluid combinations.
+
+        Use Case: "Does SDS or NaCas perform better?"
+        or "How do fluid types affect droplet formation?"
+
+        Args:
+            device_type: Optional filter to specific device type
+            output_path: Where to save comparison plot
+
+        Returns:
+            DataFrame with fluid type statistics
+
+        Raises:
+            ValueError: If insufficient fluid data
+        """
+        data = self.df.copy()
+
+        if device_type:
+            data = data[data['device_type'] == device_type]
+
+        # Create fluid combination column
+        data['fluid_combo'] = data['aqueous_fluid'].fillna('Unknown') + '_' + data['oil_fluid'].fillna('Unknown')
+
+        # Remove rows with unknown fluids
+        fluid_data = data[data['fluid_combo'] != 'Unknown_Unknown']
+
+        if len(fluid_data) == 0:
+            raise ValueError("No fluid type data available")
+
+        # Calculate statistics by fluid type
+        fluid_stats = fluid_data.groupby('fluid_combo').agg({
+            'droplet_size_mean': ['mean', 'std', 'count'],
+            'frequency_mean': ['mean', 'std', 'count']
+        }).round(3)
+
+        fluid_stats.columns = ['_'.join(col).strip() for col in fluid_stats.columns.values]
+
+        # Create visualization
+        fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+
+        # Droplet size comparison
+        droplet_data = fluid_data.dropna(subset=['droplet_size_mean'])
+        if len(droplet_data) > 0:
+            droplet_data.boxplot(column='droplet_size_mean', by='fluid_combo', ax=axes[0])
+            axes[0].set_xlabel('Fluid Combination', fontweight='bold')
+            axes[0].set_ylabel('Droplet Size Mean (µm)', fontweight='bold')
+            title_suffix = f' ({device_type})' if device_type else ''
+            axes[0].set_title(f'Droplet Size by Fluid{title_suffix}', fontweight='bold')
+            axes[0].tick_params(axis='x', rotation=45)
+            plt.suptitle('')
+
+        # Frequency comparison
+        freq_data = fluid_data.dropna(subset=['frequency_mean'])
+        if len(freq_data) > 0:
+            freq_data.boxplot(column='frequency_mean', by='fluid_combo', ax=axes[1])
+            axes[1].set_xlabel('Fluid Combination', fontweight='bold')
+            axes[1].set_ylabel('Frequency Mean (Hz)', fontweight='bold')
+            axes[1].set_title(f'Frequency by Fluid{title_suffix}', fontweight='bold')
+            axes[1].tick_params(axis='x', rotation=45)
+            plt.suptitle('')
+
+        plt.tight_layout()
+        Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+        plt.savefig(output_path, bbox_inches='tight')
+        logger.info(f"Fluid comparison plot saved: {output_path}")
+        plt.close()
+
+        logger.info(f"Compared {len(fluid_stats)} fluid combinations")
+
+        return fluid_stats
+
+    def _plot_device_comparison_boxplot(self, data: pd.DataFrame, output_path: str):
+        """Helper method to create device comparison box plots."""
+        fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+
+        # Droplet size comparison
+        droplet_data = data.dropna(subset=['droplet_size_mean'])
+        if len(droplet_data) > 0:
+            droplet_data.boxplot(column='droplet_size_mean', by='device_id', ax=axes[0])
+            axes[0].set_xlabel('Device ID', fontweight='bold')
+            axes[0].set_ylabel('Droplet Size Mean (µm)', fontweight='bold')
+            axes[0].set_title('Droplet Size Comparison', fontweight='bold')
+            axes[0].tick_params(axis='x', rotation=45)
+            plt.suptitle('')
+
+        # Frequency comparison
+        freq_data = data.dropna(subset=['frequency_mean'])
+        if len(freq_data) > 0:
+            freq_data.boxplot(column='frequency_mean', by='device_id', ax=axes[1])
+            axes[1].set_xlabel('Device ID', fontweight='bold')
+            axes[1].set_ylabel('Frequency Mean (Hz)', fontweight='bold')
+            axes[1].set_title('Frequency Comparison', fontweight='bold')
+            axes[1].tick_params(axis='x', rotation=45)
+            plt.suptitle('')
+
+        plt.tight_layout()
+        Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+        plt.savefig(output_path, bbox_inches='tight')
+        logger.info(f"Device comparison plot saved: {output_path}")
+        plt.close()
+
+    # ========================================================================
+    # END COMMON ANALYSIS METHODS
+    # ========================================================================
 
     def process_natural_language_query(self, query: str) -> Dict:
         """

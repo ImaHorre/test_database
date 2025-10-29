@@ -11,7 +11,12 @@
       "Bash(fi)",
       "Bash(git rm:*)",
       "Bash(git mv:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(.venv/Scripts/pip install:*)",
+      "Bash(timeout 3 .venv/Scripts/python.exe:*)",
+      "Bash(tree:*)",
+      "Bash(mkdir:*)",
+      "Bash(mv:*)"
     ],
     "deny": [],
     "ask": []
