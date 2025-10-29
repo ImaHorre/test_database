@@ -1,10 +1,10 @@
-# OneDrive File System Scanner & Analysis Tool - Project Outline
+# Local OneDrive Database Scanner & Analysis Tool - Project Outline
 
 ## Project Overview
-A comprehensive application to scan OneDrive file systems, extract metadata from directory structures, maintain an up-to-date CSV database, and provide AI-assisted analysis, reporting, and data retrieval capabilities.
+A comprehensive application to scan locally synced OneDrive directories, extract metadata from directory structures, maintain an up-to-date CSV database, and provide AI-assisted analysis, reporting, and data retrieval capabilities.
 
 ## Core Objectives
-1. Scan and index OneDrive directory structures
+1. Scan and index locally synced OneDrive directory structures
 2. Extract data from file names and folder hierarchies
 3. Maintain a dynamic, auto-updating CSV database
 4. Enable AI-assisted search, analysis, and reporting
@@ -15,7 +15,7 @@ A comprehensive application to scan OneDrive file systems, extract metadata from
 
 ### Phase 1: Data Extraction & Indexing
 **Components:**
-- OneDrive API integration / File system scanner
+- Local filesystem scanner
 - Metadata extraction engine
 - File naming pattern recognition
 - Folder hierarchy parser
@@ -37,13 +37,13 @@ A comprehensive application to scan OneDrive file systems, extract metadata from
 
 ## Proposed Agents
 
-### 1. **OneDrive Scanner Agent**
-- **Purpose:** Handle OneDrive authentication, file system traversal, and data extraction
+### 1. **Local Scanner Agent**
+- **Purpose:** Handle local filesystem traversal and data discovery
 - **Responsibilities:**
-  - Connect to OneDrive API
-  - Traverse directory structures
+  - Scan locally synced OneDrive directories
+  - Traverse directory structures recursively
   - Extract file/folder metadata
-  - Handle authentication and permissions
+  - Track file timestamps and changes
 
 ### 2. **Metadata Extractor Agent**
 - **Purpose:** Parse file names and folder structures to extract embedded data
@@ -79,13 +79,12 @@ A comprehensive application to scan OneDrive file systems, extract metadata from
   - Suggest corrections for malformed data
   - Monitor data quality metrics
 
-## Technical Stack (To Be Determined)
+## Technical Stack
 
-### Backend Options
-- **Python:** Excellent for data processing, CSV handling, and OneDrive API
-  - Libraries: `pandas`, `onedrivesdk` or `msgraph-core`, `schedule`
-- **Node.js:** Good for async operations and Microsoft Graph API
-  - Libraries: `@microsoft/microsoft-graph-client`, `csv-parser`
+### Backend
+- **Python:** Selected for data processing, CSV handling, and filesystem operations
+  - Libraries: `pandas`, `pathlib`, `csv`
+  - No external APIs required - local filesystem only
 
 ### Data Storage
 - **Primary:** CSV file (as specified)
@@ -131,9 +130,9 @@ A comprehensive application to scan OneDrive file systems, extract metadata from
 ## Data Flow
 
 ```
-OneDrive File System
+Local OneDrive Directory (Synced)
         ↓
-[OneDrive Scanner Agent]
+[Local Scanner Agent]
         ↓
 [Metadata Extractor Agent]
         ↓
@@ -148,17 +147,17 @@ Reports, Queries, Visualizations
 
 ## Implementation Phases
 
-### Phase 1: Foundation (Pending Folder Structure Info)
-- [ ] Document folder structure and naming conventions
-- [ ] Design CSV schema based on data layers
-- [ ] Set up OneDrive API authentication
-- [ ] Create basic file system scanner
+### Phase 1: Foundation
+- [x] Document folder structure and naming conventions
+- [x] Design CSV schema based on data layers
+- [x] Create local filesystem scanner
+- [x] Implement basic metadata extraction
 
 ### Phase 2: Core Functionality
-- [ ] Implement metadata extraction logic
-- [ ] Build CSV population system
-- [ ] Create update mechanism
-- [ ] Handle edge cases (old vs. new naming)
+- [x] Implement metadata extraction logic
+- [x] Build CSV population system
+- [x] Create update mechanism
+- [x] Handle edge cases (old vs. new naming)
 
 ### Phase 3: Intelligence Layer
 - [ ] Integrate Claude Code for queries
@@ -232,9 +231,10 @@ Reports, Queries, Visualizations
 - Build library of plotting approaches over time
 
 ### OneDrive Access Requirements
-**Must support both:**
-- Local synced OneDrive folders (for lab PC)
-- OneDrive Online via Office 365 API (for home PC without local sync)
+**Local filesystem only:**
+- Scans locally synced OneDrive folders
+- Works on any PC with OneDrive sync enabled
+- No API authentication required
 
 ### Historical Tracking
 **Status:** To be determined based on use case development

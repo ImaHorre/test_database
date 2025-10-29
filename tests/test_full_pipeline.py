@@ -34,107 +34,6 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-class LocalMetadataExtractor(MetadataExtractor):
-    """Extended extractor that can read local files for content parsing."""
-
-    def parse_dfu_csv_content(self, local_path: str):
-        """Parse DFU measurement CSV file from local path."""
-        try:
-            import pandas as pd
-
-            df = pd.read_csv(local_path)
-
-            stats = {
-                'row_count': len(df),
-                'columns': list(df.columns),
-            }
-
-            # Try to extract droplet size data
-            size_columns = [col for col in df.columns if any(
-                keyword in col.lower() for keyword in ['diameter', 'size', 'droplet']
-            )]
-
-            if size_columns:
-                size_col = size_columns[0]
-                sizes = df[size_col].dropna()
-
-                if len(sizes) > 0:
-                    stats.update({
-                        'droplet_size_mean': float(sizes.mean()),
-                        'droplet_size_std': float(sizes.std()),
-                        'droplet_size_min': float(sizes.min()),
-                        'droplet_size_max': float(sizes.max()),
-                        'droplet_count': len(sizes),
-                        'size_column': size_col
-                    })
-
-            return stats
-
-        except Exception as e:
-            logger.warning(f"Could not parse CSV content: {e}")
-            return None
-
-    def parse_freq_txt_content(self, local_path: str):
-        """Parse frequency analysis TXT file from local path."""
-        try:
-            with open(local_path, 'r') as f:
-                lines = f.read().strip().split('\n')
-
-            data = {
-                'line_count': len(lines),
-            }
-
-            # Try to extract numeric values
-            numeric_values = []
-            for line in lines:
-                try:
-                    value = float(line.strip())
-                    numeric_values.append(value)
-                except ValueError:
-                    continue
-
-            if numeric_values:
-                data.update({
-                    'frequency_count': len(numeric_values),
-                    'frequency_mean': sum(numeric_values) / len(numeric_values),
-                    'frequency_min': min(numeric_values),
-                    'frequency_max': max(numeric_values)
-                })
-
-            return data
-
-        except Exception as e:
-            logger.warning(f"Could not parse TXT content: {e}")
-            return None
-
-    def extract_from_path_with_content(self, file_info: dict) -> dict:
-        """Extract metadata including file content (for local files)."""
-        file_path = file_info['path']
-        local_path = file_info.get('local_path')
-
-        # First extract from path
-        metadata = self.extract_from_path(file_path)
-
-        # Then try to parse file content if local_path provided
-        if local_path and os.path.exists(local_path):
-            file_type = metadata.get('file_type')
-            measurement_type = metadata.get('measurement_type')
-
-            if file_type == 'csv' and measurement_type == 'dfu_measure':
-                logger.debug(f"Parsing DFU CSV: {metadata.get('file_name')}")
-                content_data = self.parse_dfu_csv_content(local_path)
-                if content_data:
-                    metadata['file_content_data'] = content_data
-
-            elif file_type == 'txt' and measurement_type == 'freq_analysis':
-                logger.debug(f"Parsing frequency TXT: {metadata.get('file_name')}")
-                content_data = self.parse_freq_txt_content(local_path)
-                if content_data:
-                    metadata['file_content_data'] = content_data
-
-        return metadata
-
-
 def validate_csv_output(csv_manager: CSVManager) -> dict:
     """
     Validate CSV output data integrity.
@@ -341,25 +240,17 @@ def main():
         logger.info("STEP 2: Extractor - Parsing Metadata")
         logger.info("="*80)
 
-        extractor = LocalMetadataExtractor()
-        metadata_list = []
-        extraction_errors = []
+        # Use standard MetadataExtractor (now supports local files!)
+        extractor = MetadataExtractor()
 
-        for i, file_info in enumerate(discovered_files):
-            try:
-                metadata = extractor.extract_from_path_with_content(file_info)
-                metadata_list.append(metadata)
+        # Extract file paths for batch processing
+        file_paths = [f['path'] for f in discovered_files]
 
-                # Log progress
-                if (i + 1) % 50 == 0:
-                    logger.info(f"  Extracted {i + 1}/{len(discovered_files)} files...")
+        # Use batch_extract with file_metadata (includes local_path)
+        metadata_list = extractor.batch_extract(file_paths, file_metadata=discovered_files)
 
-            except Exception as e:
-                logger.error(f"Error extracting {file_info['path']}: {e}")
-                extraction_errors.append({
-                    'file': file_info['path'],
-                    'error': str(e)
-                })
+        # Count extraction errors
+        extraction_errors = [m for m in metadata_list if m.get('parse_quality') == 'failed']
 
         logger.info(f"\n✓ Extraction completed!")
         logger.info(f"  Total metadata extracted: {len(metadata_list)}")

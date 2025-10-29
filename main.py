@@ -1,7 +1,7 @@
 """
-OneDrive Database Scanner - Main Orchestration
+Local Database Scanner - Main Orchestration
 
-This script coordinates all agents to scan SharePoint, extract metadata,
+This script coordinates all agents to scan local directories, extract metadata,
 update the CSV database, and generate reports.
 """
 
@@ -10,7 +10,7 @@ import logging
 from datetime import datetime
 from pathlib import Path
 
-from src import SharePointScanner, MetadataExtractor, CSVManager, DataAnalyst
+from src import LocalScanner, MetadataExtractor, CSVManager, DataAnalyst
 
 logging.basicConfig(
     level=logging.INFO,
@@ -19,15 +19,18 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def full_scan_and_update():
+def full_scan_and_update(local_root_path: str):
     """
     Perform full scan, extraction, and database update.
 
     This is the main workflow where all agents work together:
-    1. Scanner discovers files in SharePoint
+    1. Scanner discovers files in local directory
     2. Extractor parses file paths to extract metadata
     3. CSV Manager updates the database
     4. Analyst generates summary reports
+
+    Args:
+        local_root_path: Path to local directory to scan (e.g., "C:/OneDrive/..." or "fake_onedrive_database")
     """
     logger.info("🚀 Starting full scan and update...")
 
@@ -36,21 +39,21 @@ def full_scan_and_update():
     logger.info("STEP 1: Initializing Agents")
     logger.info("="*70)
 
-    scanner = SharePointScanner()
+    scanner = LocalScanner()
     extractor = MetadataExtractor()
     csv_manager = CSVManager()
     analyst = DataAnalyst(csv_manager)
 
-    # Step 2: Scan SharePoint
+    # Step 2: Scan local directory
     logger.info("\n" + "="*70)
-    logger.info("STEP 2: Scanning SharePoint")
+    logger.info("STEP 2: Scanning Local Directory")
     logger.info("="*70)
 
-    discovered_files = scanner.traverse_structure()
+    discovered_files = scanner.traverse_local_structure(local_root_path)
     logger.info(f"✓ Discovered {len(discovered_files)} files")
 
     if not discovered_files:
-        logger.warning("⚠ No files found. Check your SharePoint path and permissions.")
+        logger.warning("⚠ No files found. Check your directory path.")
         return
 
     # Step 3: Extract metadata
@@ -60,12 +63,6 @@ def full_scan_and_update():
 
     file_paths = [f['path'] for f in discovered_files]
     metadata_list = extractor.batch_extract(file_paths, file_metadata=discovered_files)
-
-    # Add file URLs to metadata (for reference)
-    for i, metadata in enumerate(metadata_list):
-        if i < len(discovered_files):
-            metadata['download_url'] = discovered_files[i].get('download_url')
-            metadata['web_url'] = discovered_files[i].get('webUrl')
 
     logger.info(f"✓ Extracted metadata from {len(metadata_list)} files")
 
@@ -100,44 +97,6 @@ def full_scan_and_update():
     logger.info("✅ SCAN COMPLETE")
     logger.info("="*70)
     csv_manager.print_summary()
-
-
-def incremental_update():
-    """
-    Perform incremental update (only check changed files since last scan).
-    """
-    logger.info("🔄 Starting incremental update...")
-
-    csv_manager = CSVManager()
-    last_scan = csv_manager.get_last_scan_timestamp()
-
-    if not last_scan:
-        logger.warning("⚠ No previous scan found. Running full scan instead.")
-        full_scan_and_update()
-        return
-
-    logger.info(f"📅 Last scan: {last_scan}")
-
-    scanner = SharePointScanner()
-    extractor = MetadataExtractor()
-
-    # Get only changed files
-    changed_files = scanner.get_changed_files_since(last_scan)
-    logger.info(f"✓ Found {len(changed_files)} changed files")
-
-    if not changed_files:
-        logger.info("✓ No changes detected. Database is up to date.")
-        return
-
-    # Extract and update
-    file_paths = [f['path'] for f in changed_files]
-    metadata_list = extractor.batch_extract(file_paths, file_metadata=changed_files)
-
-    csv_manager.update_records(metadata_list)
-    csv_manager.update_scan_timestamp()
-    csv_manager.save()
-
-    logger.info("✅ Incremental update complete")
 
 
 def query_database(device_type: str = None, flowrate: int = None, pressure: int = None):
@@ -183,13 +142,20 @@ def query_database(device_type: str = None, flowrate: int = None, pressure: int 
 def main():
     """Main entry point with CLI arguments."""
     parser = argparse.ArgumentParser(
-        description='OneDrive Database Scanner - Microfluidic Device Measurement Tracking'
+        description='Local Database Scanner - Microfluidic Device Measurement Tracking'
     )
 
     parser.add_argument(
         'command',
-        choices=['scan', 'update', 'query', 'report'],
+        choices=['scan', 'query', 'report'],
         help='Command to run'
+    )
+
+    parser.add_argument(
+        '--path',
+        type=str,
+        default='fake_onedrive_database',
+        help='Path to local directory to scan (default: fake_onedrive_database)'
     )
 
     parser.add_argument('--device-type', type=str, help='Filter by device type (e.g., W13)')
@@ -200,10 +166,7 @@ def main():
 
     try:
         if args.command == 'scan':
-            full_scan_and_update()
-
-        elif args.command == 'update':
-            incremental_update()
+            full_scan_and_update(args.path)
 
         elif args.command == 'query':
             query_database(

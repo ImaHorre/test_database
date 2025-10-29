@@ -97,10 +97,10 @@ Example:
 - Small file volume (few TXT/CSV files per branch) makes processing efficient
 
 ### OneDrive Access Requirements
-- **Must support both access methods:**
-  - Local synced folders (lab PC)
-  - OneDrive Online via Office 365 API (home PC without local sync)
-- Microsoft Graph API will be needed for online access
+- **Local filesystem only:**
+  - Scans locally synced OneDrive folders
+  - Works on any PC with OneDrive sync enabled
+  - No API authentication required
 
 ### AI Integration Strategy
 - **Primary:** Claude Code for interactive queries and analysis
@@ -129,36 +129,61 @@ Example:
 3. Identify patterns across fluid types
 4. Analyze DFU row performance metrics
 
-## Technology Stack (TBD)
+## Technology Stack
 
-Likely candidates:
-- **Python:** Strong for data processing (`pandas`, OneDrive SDK, `schedule`)
-- **Node.js:** Alternative for Microsoft Graph API integration
+Selected technology:
+- **Python:** Selected for data processing, CSV handling, and filesystem operations
+  - Key libraries: `pandas`, `pathlib`, `csv`
+  - No external APIs required - local filesystem only
 
-Decision pending user requirements and folder structure complexity.
+## Development Workflow
 
-## Development Workflow (To Be Established)
+### Setup
+```bash
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
+```
 
-Once technology stack is chosen, this section will include:
-- Setup and installation commands
-- How to run the scanner
-- How to update the CSV
-- How to query the data
-- Testing procedures
+### Running the Scanner
+```bash
+python main.py
+```
+
+### Testing
+All tests are in the `tests/` directory:
+```bash
+python tests\test_full_pipeline.py  # Full integration test
+python tests\test_scanner_local.py  # Scanner only
+python tests\test_extractor_area_timepoint.py  # Extractor only
+```
+
+See `tests/README.md` for detailed test documentation.
 
 ## Next Steps for Development
 
-1. **Awaiting Input:** User will provide OneDrive folder structure details including:
-   - Directory hierarchy layers and depth
-   - Data embedded at each layer
-   - Examples of old vs. new file naming patterns
-   - Volume of files to process
+### Completed
+- [x] Folder structure documented
+- [x] CSV schema designed and implemented
+- [x] Technology stack selected (Python)
+- [x] Core agents developed (Scanner, Extractor, CSV Manager)
+- [x] Full pipeline tested and validated
+- [x] Area/timepoint parsing implemented
 
-2. **Schema Design:** Create CSV structure based on folder documentation
+### Remaining Work
+1. **Production Deployment:**
+   - Configure path to real OneDrive directory
+   - Run full scan on production data
+   - Validate results and handle edge cases
 
-3. **Stack Selection:** Choose Python vs. Node.js based on requirements
+2. **Analysis & Reporting:**
+   - Implement natural language query interface
+   - Build plotting and visualization methods
+   - Create device comparison reports
 
-4. **Agent Development:** Begin implementing core components per project outline
+3. **Optimization:**
+   - Fine-tune parsing for any edge cases found in production
+   - Optimize performance if needed for larger datasets
 
 ## Important Notes for Future Claude Instances
 
@@ -166,7 +191,7 @@ Once technology stack is chosen, this section will include:
 - **Flexible parsing is critical** - file naming conventions vary over time, some levels may be absent
 - **User prefers AI interaction** - build for natural language queries, not manual CSV inspection
 - **Windows environment** - consider platform-specific commands and file paths
-- **No git repository yet** - initialize when appropriate during development
+- **Git repository active** - project is version controlled
 - **Dynamic plotting library** - save successful plotting methods for reuse
 - **Small file volume** - optimize for clarity over performance
 - **External analysis script** - frequency data format standardization happening in separate repo

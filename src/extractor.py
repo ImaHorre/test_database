@@ -10,8 +10,6 @@ from typing import Dict, Optional, List
 from datetime import datetime
 import logging
 import pandas as pd
-import requests
-from io import StringIO
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -186,22 +184,23 @@ class MetadataExtractor:
 
         return result
 
-    def parse_dfu_csv_content(self, download_url: str) -> Optional[Dict]:
+    def parse_dfu_csv_content(self, local_path: str) -> Optional[Dict]:
         """
         Parse DFU measurement CSV file content.
 
         Args:
-            download_url: URL to download the CSV file
+            local_path: Local file path to read CSV file
 
         Returns:
             Dict with droplet size statistics or None if parsing fails
         """
         try:
-            response = requests.get(download_url, timeout=30)
-            response.raise_for_status()
+            if not local_path:
+                logger.warning("⚠ No local_path provided")
+                return None
 
-            # Parse CSV
-            df = pd.read_csv(StringIO(response.text))
+            # Read CSV from local file
+            df = pd.read_csv(local_path)
 
             # Extract basic statistics
             stats = {
@@ -210,13 +209,20 @@ class MetadataExtractor:
             }
 
             # Try to extract droplet size data if column exists
-            # Common column names: 'Diameter', 'Size', 'Droplet_Size', etc.
-            size_columns = [col for col in df.columns if any(
-                keyword in col.lower() for keyword in ['diameter', 'size', 'droplet']
-            )]
+            # Prioritize 'diameter' columns, exclude ID columns
+            size_col = None
 
-            if size_columns:
-                size_col = size_columns[0]
+            # First, look for 'diameter' columns (most specific)
+            diameter_cols = [col for col in df.columns if 'diameter' in col.lower() and '_id' not in col.lower()]
+            if diameter_cols:
+                size_col = diameter_cols[0]
+            else:
+                # Fallback to 'size' columns (exclude ID columns)
+                size_cols = [col for col in df.columns if 'size' in col.lower() and '_id' not in col.lower()]
+                if size_cols:
+                    size_col = size_cols[0]
+
+            if size_col:
                 sizes = df[size_col].dropna()
 
                 stats.update({
@@ -234,61 +240,87 @@ class MetadataExtractor:
             logger.warning(f"⚠ Could not parse CSV content: {e}")
             return None
 
-    def parse_freq_txt_content(self, download_url: str) -> Optional[Dict]:
+    def parse_freq_txt_content(self, local_path: str) -> Optional[Dict]:
         """
         Parse frequency analysis TXT file content.
 
         Args:
-            download_url: URL to download the TXT file
+            local_path: Local file path to read TXT file
 
         Returns:
             Dict with frequency analysis data or None if parsing fails
         """
         try:
-            response = requests.get(download_url, timeout=30)
-            response.raise_for_status()
+            if not local_path:
+                logger.warning("⚠ No local_path provided")
+                return None
 
-            lines = response.text.strip().split('\n')
+            # Read TXT from local file
+            with open(local_path, 'r') as f:
+                content = f.read()
 
-            # Basic parsing - extract numeric data
-            # Format may vary, so we'll be flexible
+            lines = content.strip().split('\n')
+
+            # Extract frequency data using regex for structured format
+            # Example: "Frequency Method 1 (avg of frequencies): 11.47 Hz"
+            freq_method_1 = None
+            freq_method_2 = None
+            num_cycles = None
+
+            for line in lines:
+                # Try to match "Frequency Method 1: X.XX Hz" or similar
+                match1 = re.search(r'Frequency Method 1[^:]*:\s*([\d.]+)\s*Hz', line, re.IGNORECASE)
+                if match1:
+                    freq_method_1 = float(match1.group(1))
+
+                match2 = re.search(r'Frequency Method 2[^:]*:\s*([\d.]+)\s*Hz', line, re.IGNORECASE)
+                if match2:
+                    freq_method_2 = float(match2.group(1))
+
+                # Extract number of cycles
+                cycles_match = re.search(r'Number of cycles:\s*(\d+)', line, re.IGNORECASE)
+                if cycles_match:
+                    num_cycles = int(cycles_match.group(1))
+
+            # Calculate statistics from both methods
             data = {
                 'line_count': len(lines),
-                'raw_sample': lines[:5] if len(lines) >= 5 else lines  # First 5 lines as sample
             }
 
-            # Try to extract numeric values (frequencies)
-            numeric_values = []
-            for line in lines:
-                try:
-                    # Try to parse as float
-                    value = float(line.strip())
-                    numeric_values.append(value)
-                except ValueError:
-                    # Skip non-numeric lines
-                    continue
+            if freq_method_1 is not None and freq_method_2 is not None:
+                freq_values = [freq_method_1, freq_method_2]
+                data['frequency_mean'] = sum(freq_values) / len(freq_values)
+                data['frequency_min'] = min(freq_values)
+                data['frequency_max'] = max(freq_values)
+                data['frequency_count'] = num_cycles if num_cycles is not None else 0
+                data['frequency_method_1'] = freq_method_1
+                data['frequency_method_2'] = freq_method_2
+            elif freq_method_1 is not None:
+                data['frequency_mean'] = freq_method_1
+                data['frequency_min'] = freq_method_1
+                data['frequency_max'] = freq_method_1
+                data['frequency_count'] = num_cycles if num_cycles is not None else 0
+                data['frequency_method_1'] = freq_method_1
+            elif freq_method_2 is not None:
+                data['frequency_mean'] = freq_method_2
+                data['frequency_min'] = freq_method_2
+                data['frequency_max'] = freq_method_2
+                data['frequency_count'] = num_cycles if num_cycles is not None else 0
+                data['frequency_method_2'] = freq_method_2
 
-            if numeric_values:
-                data.update({
-                    'frequency_count': len(numeric_values),
-                    'frequency_mean': sum(numeric_values) / len(numeric_values),
-                    'frequency_min': min(numeric_values),
-                    'frequency_max': max(numeric_values)
-                })
-
-            return data
+            return data if 'frequency_mean' in data else None
 
         except Exception as e:
             logger.warning(f"⚠ Could not parse TXT content: {e}")
             return None
 
-    def extract_from_path(self, file_path: str, download_url: Optional[str] = None) -> Dict:
+    def extract_from_path(self, file_path: str, local_path: Optional[str] = None) -> Dict:
         """
         Extract all metadata from a complete file path.
 
         Args:
             file_path: e.g., "W13_S1_R2/06102025/23102025/NaCas_SO/5mlhr150mbar/dfu_measure/DFU1.csv"
-            download_url: Optional URL to download and parse file contents
+            local_path: Optional local file path to read contents
 
         Returns:
             Dict with all extracted metadata
@@ -335,6 +367,11 @@ class MetadataExtractor:
         for i, part in enumerate(remaining):
             # Try to identify what this part is
 
+            # Check if it's measurement type folder (CHECK FIRST to avoid false fluid matches)
+            if part in ['dfu_measure', 'freq_analysis']:
+                metadata['measurement_type'] = part
+                continue  # Skip to next part - this is NOT fluids/flow/file
+
             # Check if it's fluids
             fluid_data = self.parse_fluids(part)
             if fluid_data and 'aqueous_fluid' not in metadata:
@@ -347,11 +384,6 @@ class MetadataExtractor:
                 metadata.update(flow_data)
                 continue
 
-            # Check if it's measurement type folder
-            if part in ['dfu_measure', 'freq_analysis']:
-                metadata['measurement_type'] = part
-                continue
-
             # Check if it's a file name (last part)
             if i == len(remaining) - 1 and '.' in part:
                 file_data = self.parse_file_name(part)
@@ -359,22 +391,28 @@ class MetadataExtractor:
                     metadata.update(file_data)
                     metadata['file_name'] = part
 
-        # Parse file contents if download URL is provided
-        if download_url:
+        # Parse file contents if local path is provided
+        if local_path:
             file_type = metadata.get('file_type')
             measurement_type = metadata.get('measurement_type')
 
             if file_type == 'csv' and measurement_type == 'dfu_measure':
                 logger.info(f"📊 Parsing DFU CSV content from {metadata.get('file_name')}")
-                content_data = self.parse_dfu_csv_content(download_url)
+                content_data = self.parse_dfu_csv_content(local_path=local_path)
                 if content_data:
                     metadata['file_content_data'] = content_data
 
             elif file_type == 'txt' and measurement_type == 'freq_analysis':
                 logger.info(f"📈 Parsing frequency TXT content from {metadata.get('file_name')}")
-                content_data = self.parse_freq_txt_content(download_url)
+                content_data = self.parse_freq_txt_content(local_path=local_path)
                 if content_data:
                     metadata['file_content_data'] = content_data
+
+        # Apply default fluids if not present
+        if not metadata.get('aqueous_fluid'):
+            metadata['aqueous_fluid'] = 'SDS'
+        if not metadata.get('oil_fluid'):
+            metadata['oil_fluid'] = 'SO'
 
         # Validate dates
         self._validate_dates(metadata)
@@ -432,7 +470,7 @@ class MetadataExtractor:
 
         Args:
             file_paths: List of file path strings
-            file_metadata: Optional list of file metadata dicts from scanner (includes download_url)
+            file_metadata: Optional list of file metadata dicts from scanner (includes local_path)
 
         Returns:
             List of metadata dicts
@@ -441,12 +479,12 @@ class MetadataExtractor:
 
         for i, path in enumerate(file_paths):
             try:
-                # Get download URL if file_metadata is provided
-                download_url = None
+                # Get local path if file_metadata is provided
+                local_path = None
                 if file_metadata and i < len(file_metadata):
-                    download_url = file_metadata[i].get('download_url')
+                    local_path = file_metadata[i].get('local_path')
 
-                metadata = self.extract_from_path(path, download_url=download_url)
+                metadata = self.extract_from_path(path, local_path=local_path)
                 results.append(metadata)
             except Exception as e:
                 logger.error(f"❌ Error extracting from {path}: {e}")
