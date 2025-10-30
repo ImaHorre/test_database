@@ -1,0 +1,36 @@
+@analyst:
+
+## Some user interface feature updates
+### correction to the way measurments are summed 
+Using dashbaord_v2. ran the command 'show params for w14' and got back: 
+
+1. 15ml/hr + 300mbar: 36 measurements, 1 devices
+  2. 15ml/hr + 350mbar: 36 measurements, 1 devices
+  3. 30ml/hr + 300mbar: 36 measurements, 1 devices
+  4. 35ml/hr + 150mbar: 36 measurements, 1 devices
+  5. 40ml/hr + 50mbar: 36 measurements, 1 devices
+  6. 45ml/hr + 350mbar: 36 measurements, 1 devices
+
+these 36 measurements correspond to a seires od compelte dfue drolet measurments and a series of frequenct measurments. These should be summed up for example if there is a full series of droplet measurements (4+ DFUs measured) then we can just say in the terminal output - 1 full droplet size analysis. or 2 full drop_measure etc. same for teh frequency. Liklihood is that if there are any frequecnyt results found to a given device/param/test then the entire dataset is there we dont need to say we have 30 or so files we have 1 complete set of freq_analyis. 
+
+### Update to stats command 
+currently stats command e.g 'stats w13' shows lots of good key info. great. but when i enter 'stats w13 at 5mlhr' I want to jsut see the stats for all w13 devcies that were done at 5mlhr. this would show similar info to the first command but be refined around only devices that have been tested at 5mlhr. it should alos give the deive id. so here i would perhaps see drop size data, freq data etc. then flow parameters tested: deice id - 5mlhr + 300mbar - 1 drop_measure complete analysis
+device id - 5mlhr + 200mbar - 1 drop_measure complete analysis + 1 complete freq_analysis
+
+
+###
+show w13 at 5mlhr kinda did what i thougt stat woiud do in the text above. and gave some brief stats on drop size and freq only for these filtered devices. good. here in the terminal it would be good to see what fluids were used in the tests presented and the oil flowrates. i asked for 5mlhr and know there should be 2 devices found. it finds two but doenst show me if they were teh same oil pressue, or different. 
+
+### In general an update is required to handle this sort of interaction and 'how would a user behave and what would they want' to the current commands and natural language prompts 
+
+### maybe we could offer a way of making edits to the code (for example if something doest run) a command or prompt.
+
+
+### terminal memeory. i do a cmd like show w13 at 5mlhr. it returns some info cool. now i want to plot based on these devices/tests. i want to do say plot w13 at 5mlhr and see both drop size and frequency changing over dfu number for both devices. in this case two plots. but curremt;y terminal sees this as a fresh command and interprests it wrong. (this is both a bug about how we handle the terminal promt but also the prompt itself) it should be smart enough to be like ojay they just asjed abotut this data and now they want to plot it. and same goes if in a fresh terminal i pomted 'plot w13 at 5mlhr' it should know by default that I only want to see the key measured vaiables and plot them against the dfu number. this is like our defauilt plot. furthermore if its not sure it can ask anbd give options. e.g i prompt plot droplet size for all w13 devices that have been ran at 5mlhr' it could give options like (1) I found 2 entries of deivces, x and y, that have been tested at 5mlhr 300 mbar and 5mlh 400mbar for SDS_SO, do you want to continue (2) this is not the right data. user enters (1)...then (1) shall i plot dfu number on the x and measured variable on the y or (2) user mae further request (here we couild bring in a llm to assist as a later feature. this ensures that random wrong plots aren't just saved. the terminal extracts as much infor as possible from the user with the user confirming across all steps to get the the point of a correct plot being made and saved. 
+
+ 
+
+
+
+## User change to csv
+

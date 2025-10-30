@@ -23,6 +23,10 @@ class SimpleDashboard:
         self.df = self.analyst.df
         print(f"[OK] Loaded {len(self.df)} measurements\n")
 
+        # Plot editing state
+        self.plot_editor = None
+        self.in_plot_editing_mode = False
+
     def show_startup_info(self):
         """Display at-a-glance info on startup."""
         df = self.df
@@ -454,6 +458,11 @@ class SimpleDashboard:
                 print(f"\n... {len(data)} total rows")
             print()
 
+        # Check if live preview mode was activated
+        if isinstance(result.get('result'), dict) and result['result'].get('live_preview'):
+            self.enter_plot_editing_mode(result['result'])
+            return
+
         # Show plot/report paths
         plot_path = result.get('plot_path')
         if plot_path:
@@ -464,6 +473,75 @@ class SimpleDashboard:
         if report_path:
             print(f"Report saved: {report_path}")
             print()
+
+    def enter_plot_editing_mode(self, plot_result: dict):
+        """Enter plot editing mode with live preview."""
+        self.in_plot_editing_mode = True
+        self.plot_editor = plot_result.get('editor')
+
+        print("=" * 70)
+        print("PLOT EDITING MODE ACTIVE")
+        print("=" * 70)
+        print()
+        print("Plot window opened. Type 'help' for editing options.")
+        print("Commands: help, save, discard, change colors, add test date, etc.")
+        print()
+        print("-" * 70)
+        print()
+
+    def exit_plot_editing_mode(self):
+        """Exit plot editing mode."""
+        self.in_plot_editing_mode = False
+        self.plot_editor = None
+        print()
+        print("Plot editing completed.")
+        print()
+        print("-" * 70)
+        print()
+
+    def handle_plot_editing_command(self, command: str) -> bool:
+        """
+        Handle plot editing commands.
+
+        Returns:
+            True if should exit editing mode, False otherwise
+        """
+        if not self.plot_editor:
+            print("Error: No active plot editor")
+            return True
+
+        # Check if plot window is still open
+        if not self.plot_editor.is_plot_open():
+            print("Plot window was closed.")
+            return True
+
+        # Process the command
+        result = self.plot_editor.process_command(command)
+
+        status = result.get('status', 'unknown')
+        message = result.get('message', '')
+        action = result.get('action', 'none')
+
+        # Display result
+        if status == 'success':
+            if action == 'help':
+                print(message)
+            else:
+                print(f"[OK] {message}")
+        elif status == 'error':
+            print(f"[Error] {message}")
+
+        # Check if we should exit editing mode
+        if action in ['save', 'discard']:
+            if action == 'save':
+                file_path = result.get('file_path', 'unknown')
+                print(f"\nPlot saved to: {file_path}")
+            return True
+
+        print("Plot updated. Continue editing or type 'save' to finish.")
+        print()
+
+        return False
 
     def refresh(self):
         """Refresh database."""
@@ -483,6 +561,21 @@ class SimpleDashboard:
         # Main loop
         while True:
             try:
+                # Check if in plot editing mode
+                if self.in_plot_editing_mode:
+                    # Special prompt for plot editing
+                    user_input = input("plot> ").strip()
+
+                    if not user_input:
+                        continue
+
+                    # Handle plot editing commands
+                    should_exit = self.handle_plot_editing_command(user_input)
+                    if should_exit:
+                        self.exit_plot_editing_mode()
+                    continue
+
+                # Normal mode
                 # Get input
                 user_input = input(">>> ").strip()
 
@@ -542,7 +635,10 @@ class SimpleDashboard:
             except KeyboardInterrupt:
                 print()
                 print()
-                print("Interrupted. Type 'q' to quit or continue entering commands.")
+                if self.in_plot_editing_mode:
+                    print("Interrupted. Type 'discard' to close plot or continue editing.")
+                else:
+                    print("Interrupted. Type 'q' to quit or continue entering commands.")
                 print()
 
             except Exception as e:

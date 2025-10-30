@@ -70,6 +70,12 @@ class QueryProcessor:
                 r'\b(plot|graph|chart|visualize|visualization)\b',
                 r'\b(show.*plot|create.*graph)\b',
             ],
+            'plot_dfu': [
+                r'\b(across|vs|versus)\b.*\bdfu\b',
+                r'\bdfu\b.*\b(rows?|numbers?)\b',
+                r'\b(show|plot|display)\b.*\b(across|for|at)\b.*\b(measured|all)\b.*\bdfu',
+                r'\ball\s+measured\s+dfus?\b',
+            ],
             'report': [
                 r'\b(report|summary|summarize)\b',
                 r'\b(generate.*report|create.*summary)\b',
@@ -319,6 +325,12 @@ TRACKING:
   - "Monitor W14_S1_R1 performance"
   - "How has W13_S1_R1 performed over time?"
 
+DFU ANALYSIS (NEW):
+  - "Show droplet size across all measured DFUs for W13 at 5mlhr200mbar"
+  - "Plot frequency across DFUs for each W14 device at 30mlhr300mbar"
+  - "Show me the droplet size across all measured DFUs for each w13 device"
+  - "Display frequency vs DFU rows for W13 devices"
+
 PLOTTING:
   - "Plot device type comparison"
   - "Visualize flowrate effects"
@@ -340,6 +352,7 @@ TIPS:
   - Be specific about device types (W13, W14) when possible
   - Include flow parameters (e.g., "5 ml/hr", "500 mbar") for better filtering
   - You can combine multiple criteria (e.g., "Compare W13 devices at 5 ml/hr")
+  - DFU queries create multi-line plots showing each device as a separate line
   - If the query is unclear, I'll ask clarifying questions
 
 TYPE 'help' TO SEE THIS MESSAGE AGAIN

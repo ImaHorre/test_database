@@ -15,6 +15,7 @@ from pathlib import Path
 
 from .csv_manager import CSVManager
 from .query_processor import QueryProcessor, format_query_help
+from .plotting import DFUPlotter, DeviceComparisonPlotter
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -43,6 +44,10 @@ class DataAnalyst:
 
         # Initialize query processor for natural language queries
         self.query_processor = QueryProcessor()
+
+        # Initialize specialized plotters
+        self.dfu_plotter = DFUPlotter(self.manager)
+        self.device_plotter = DeviceComparisonPlotter(self.manager)
 
         # Set up plotting style
         sns.set_style("whitegrid")
@@ -245,7 +250,7 @@ class DataAnalyst:
         self,
         device_types: List[str],
         output_path: str = 'outputs/device_comparison.png'
-    ):
+    ) -> Dict:
         """
         Create bar plot comparing device types.
 
@@ -256,50 +261,21 @@ class DataAnalyst:
             device_types: List of device types to compare
             output_path: Where to save the plot
 
+        Returns:
+            Dictionary with plot metadata and summary
+
         Raises:
             ValueError: If comparison fails or no valid data
             IOError: If plot cannot be saved
         """
-        try:
-            comparison = self.compare_device_types(device_types)
-
-            if len(comparison) == 0:
-                raise ValueError("No data available to plot")
-
-            fig, axes = plt.subplots(1, 2, figsize=(14, 6))
-
-            # Plot 1: Total measurements
-            axes[0].bar(comparison['device_type'], comparison['total_measurements'])
-            axes[0].set_title('Total Measurements by Device Type', fontsize=12, fontweight='bold')
-            axes[0].set_xlabel('Device Type', fontsize=10, fontweight='bold')
-            axes[0].set_ylabel('Number of Measurements', fontsize=10, fontweight='bold')
-            axes[0].grid(True, alpha=0.3)
-
-            # Plot 2: Unique devices tested
-            axes[1].bar(comparison['device_type'], comparison['unique_devices'], color='green')
-            axes[1].set_title('Unique Devices Tested', fontsize=12, fontweight='bold')
-            axes[1].set_xlabel('Device Type', fontsize=10, fontweight='bold')
-            axes[1].set_ylabel('Number of Unique Devices', fontsize=10, fontweight='bold')
-            axes[1].grid(True, alpha=0.3)
-
-            plt.tight_layout()
-
-            # Save plot
-            Path(output_path).parent.mkdir(parents=True, exist_ok=True)
-            plt.savefig(output_path, bbox_inches='tight')
-            logger.info(f"Plot saved: {output_path}")
-            plt.close()
-
-        except Exception as e:
-            plt.close('all')  # Clean up any open figures
-            logger.error(f"Failed to create device comparison plot: {e}")
-            raise
+        # Delegate to device comparison plotter
+        return self.device_plotter.plot_device_type_comparison(device_types, output_path)
 
     def plot_flow_parameter_analysis(
         self,
         device_type: str,
         output_path: str = 'outputs/flow_parameter_analysis.png'
-    ):
+    ) -> Dict:
         """
         Analyze and plot flow parameter distribution for a device type.
 
@@ -310,66 +286,15 @@ class DataAnalyst:
             device_type: Device type to analyze
             output_path: Where to save the plot
 
+        Returns:
+            Dictionary with plot metadata and flow parameter statistics
+
         Raises:
             ValueError: If no data for device type or plotting fails
             IOError: If plot cannot be saved
         """
-        try:
-            data = self.filter_by_device_type(device_type)
-
-            if len(data) == 0:
-                logger.warning(f"No data for device type: {device_type}")
-                raise ValueError(f"No data available for device type: {device_type}")
-
-            # Group by flow parameters and count tests
-            flow_summary = data.groupby(['aqueous_flowrate', 'oil_pressure']).size().reset_index(name='count')
-
-            if len(flow_summary) == 0:
-                raise ValueError(f"No flow parameter data available for {device_type}")
-
-            fig, ax = plt.subplots(figsize=(12, 8))
-
-            # Create scatter plot with size representing count
-            scatter = ax.scatter(
-                flow_summary['aqueous_flowrate'],
-                flow_summary['oil_pressure'],
-                s=flow_summary['count'] * 50,  # Size based on count
-                alpha=0.6,
-                c=flow_summary['count'],
-                cmap='viridis'
-            )
-
-            # Add labels for each point
-            for idx, row in flow_summary.iterrows():
-                ax.annotate(
-                    f"n={row['count']}",
-                    (row['aqueous_flowrate'], row['oil_pressure']),
-                    fontsize=8,
-                    ha='center'
-                )
-
-            ax.set_title(
-                f'Flow Parameter Distribution - {device_type}\n(Size = number of tests)',
-                fontsize=12,
-                fontweight='bold'
-            )
-            ax.set_xlabel('Aqueous Flowrate (ml/hr)', fontsize=10, fontweight='bold')
-            ax.set_ylabel('Oil Pressure (mbar)', fontsize=10, fontweight='bold')
-            ax.grid(True, alpha=0.3)
-
-            plt.colorbar(scatter, label='Number of Tests')
-            plt.tight_layout()
-
-            # Save plot
-            Path(output_path).parent.mkdir(parents=True, exist_ok=True)
-            plt.savefig(output_path, bbox_inches='tight')
-            logger.info(f"Plot saved: {output_path}")
-            plt.close()
-
-        except Exception as e:
-            plt.close('all')  # Clean up any open figures
-            logger.error(f"Failed to create flow parameter plot: {e}")
-            raise
+        # Delegate to device comparison plotter
+        return self.device_plotter.plot_flow_parameter_analysis(device_type, output_path)
 
     def generate_summary_report(self, output_path: str = 'outputs/summary_report.txt'):
         """
@@ -502,7 +427,7 @@ class DataAnalyst:
         logger.info(f"Compared {len(comparison)} devices at specified parameters")
 
         # Create visualization
-        self._plot_device_comparison_boxplot(result, output_path)
+        self.device_plotter.plot_device_comparison_boxplot(result, output_path)
 
         return comparison
 
@@ -845,35 +770,59 @@ class DataAnalyst:
 
         return fluid_stats
 
-    def _plot_device_comparison_boxplot(self, data: pd.DataFrame, output_path: str):
-        """Helper method to create device comparison box plots."""
-        fig, axes = plt.subplots(1, 2, figsize=(14, 6))
 
-        # Droplet size comparison
-        droplet_data = data.dropna(subset=['droplet_size_mean'])
-        if len(droplet_data) > 0:
-            droplet_data.boxplot(column='droplet_size_mean', by='device_id', ax=axes[0])
-            axes[0].set_xlabel('Device ID', fontweight='bold')
-            axes[0].set_ylabel('Droplet Size Mean (µm)', fontweight='bold')
-            axes[0].set_title('Droplet Size Comparison', fontweight='bold')
-            axes[0].tick_params(axis='x', rotation=45)
-            plt.suptitle('')
+    def plot_metric_vs_dfu(
+        self,
+        metric: str = 'droplet_size_mean',
+        device_type: Optional[str] = None,
+        aqueous_flowrate: Optional[int] = None,
+        oil_pressure: Optional[int] = None,
+        output_path: str = 'outputs/dfu_analysis.png',
+        query_text: Optional[str] = None,
+        live_preview: bool = False
+    ) -> Dict:
+        """
+        Plot a metric across all DFU rows for each device matching the criteria.
 
-        # Frequency comparison
-        freq_data = data.dropna(subset=['frequency_mean'])
-        if len(freq_data) > 0:
-            freq_data.boxplot(column='frequency_mean', by='device_id', ax=axes[1])
-            axes[1].set_xlabel('Device ID', fontweight='bold')
-            axes[1].set_ylabel('Frequency Mean (Hz)', fontweight='bold')
-            axes[1].set_title('Frequency Comparison', fontweight='bold')
-            axes[1].tick_params(axis='x', rotation=45)
-            plt.suptitle('')
+        CONTEXT-AWARE PLOTTING: Automatically detects which parameters vary in the
+        filtered dataset and includes them in the legend for clarity.
 
-        plt.tight_layout()
-        Path(output_path).parent.mkdir(parents=True, exist_ok=True)
-        plt.savefig(output_path, bbox_inches='tight')
-        logger.info(f"Device comparison plot saved: {output_path}")
-        plt.close()
+        Use Case: "Show me the droplet size across all measured DFUs for each W13 device
+                   that was tested at 5mlhr200mbar"
+
+        Creates a multi-line plot with:
+        - X-axis: DFU row number (1-6)
+        - Y-axis: Specified metric (droplet size or frequency)
+        - Multiple lines: One per device that matches the criteria
+        - Error bars: Standard deviation or min/max range for each DFU point
+        - Legend: Device IDs + varying parameters (pressure, fluids, dates, etc.)
+
+        Args:
+            metric: 'droplet_size_mean' or 'frequency_mean'
+            device_type: Optional filter to specific device type (W13, W14)
+            aqueous_flowrate: Optional flowrate filter in ml/hr
+            oil_pressure: Optional pressure filter in mbar
+            output_path: Where to save the plot
+            query_text: Original query text for detecting metadata preferences
+            live_preview: If True, opens interactive plot editor
+
+        Returns:
+            Dictionary with plot metadata and summary statistics
+
+        Raises:
+            ValueError: If no devices found matching criteria or no DFU data
+        """
+        # Delegate to DFU plotter
+        return self.dfu_plotter.plot_metric_vs_dfu(
+            metric=metric,
+            device_type=device_type,
+            aqueous_flowrate=aqueous_flowrate,
+            oil_pressure=oil_pressure,
+            output_path=output_path,
+            query_text=query_text,
+            live_preview=live_preview
+        )
+
 
     # ========================================================================
     # END COMMON ANALYSIS METHODS
@@ -945,6 +894,9 @@ class DataAnalyst:
 
             elif intent.intent_type == 'track':
                 return self._handle_track_query(intent)
+
+            elif intent.intent_type == 'plot_dfu':
+                return self._handle_plot_dfu_query(intent)
 
             elif intent.intent_type == 'plot':
                 return self._handle_plot_query(intent)
@@ -1161,6 +1113,65 @@ class DataAnalyst:
                 'intent': 'plot',
                 'message': "What would you like to plot? Try specifying a device type, device ID, or parameters.",
                 'clarification': "Please provide more details for the plot",
+                'result': None
+            }
+
+    def _handle_plot_dfu_query(self, intent, live_preview: bool = True) -> Dict:
+        """Handle 'plot_dfu' intent queries - plot metric vs DFU rows."""
+        from datetime import datetime
+
+        # Extract parameters from intent
+        device_type = intent.entities.get('device_type')
+        flowrate = intent.entities.get('flowrate')
+        pressure = intent.entities.get('pressure')
+        metric = intent.entities.get('metric', 'droplet_size_mean')
+
+        # Generate output path
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        output_path = f"outputs/analyst/plots/nl_query_dfu_{timestamp}.png"
+
+        try:
+            # Call the DFU plotting method with query text for context detection
+            result = self.plot_metric_vs_dfu(
+                metric=metric,
+                device_type=device_type,
+                aqueous_flowrate=flowrate,
+                oil_pressure=pressure,
+                output_path=output_path,
+                query_text=intent.raw_query,  # Pass original query for context detection
+                live_preview=live_preview  # Enable live preview
+            )
+
+            # Build success message with varying parameters info
+            message = f"DFU analysis complete!\n\n"
+            message += f"Metric: {metric}\n"
+            message += f"Found {result['num_devices']} device(s):\n"
+            for device in result['devices']:
+                message += f"  - {device}\n"
+            message += f"\nDFU rows measured: {', '.join(map(str, result['dfu_rows_measured']))}\n"
+            message += f"Total measurements: {result['total_measurements']}\n"
+
+            # Show varying parameters if detected
+            if result.get('varying_parameters'):
+                message += f"\nVarying parameters detected: {', '.join(result['varying_parameters'])}\n"
+                message += "(Legend includes context for differentiating devices)\n"
+
+            message += f"\nFilters applied: {', '.join(result['filters'])}" if result['filters'] else ""
+
+            return {
+                'status': 'success',
+                'intent': 'plot_dfu',
+                'message': message,
+                'result': result,
+                'plot_path': output_path
+            }
+
+        except ValueError as e:
+            # Handle case where no data found
+            return {
+                'status': 'error',
+                'intent': 'plot_dfu',
+                'message': f"Could not generate DFU plot: {str(e)}",
                 'result': None
             }
 
