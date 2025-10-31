@@ -13,10 +13,11 @@ import os
 import sys
 from pathlib import Path
 
-# Add src directory to path
-sys.path.insert(0, str(Path(__file__).parent / 'src'))
+# Add src directory to path (go up one level since we're in tests/)
+sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
 
-from src import DataAnalyst, CSVManager
+from analyst import DataAnalyst
+from csv_manager import CSVManager
 
 
 class TestDataAnalystIntegration(unittest.TestCase):

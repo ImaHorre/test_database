@@ -16,6 +16,7 @@ from pathlib import Path
 from .csv_manager import CSVManager
 from .query_processor import QueryProcessor, format_query_help
 from .plotting import DFUPlotter, DeviceComparisonPlotter
+from .query_handlers import QueryRouter
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -44,6 +45,9 @@ class DataAnalyst:
 
         # Initialize query processor for natural language queries
         self.query_processor = QueryProcessor()
+
+        # Initialize query router for handling different intent types
+        self.query_router = QueryRouter(self)
 
         # Initialize specialized plotters
         self.dfu_plotter = DFUPlotter(self.manager)
@@ -878,39 +882,9 @@ class DataAnalyst:
                 'result': None
             }
 
-        # Route to appropriate method based on intent
+        # Route to appropriate handler using the query router
         try:
-            if intent.intent_type == 'list':
-                return self._handle_list_query(intent)
-
-            elif intent.intent_type == 'filter':
-                return self._handle_filter_query(intent)
-
-            elif intent.intent_type == 'compare':
-                return self._handle_compare_query(intent)
-
-            elif intent.intent_type == 'analyze':
-                return self._handle_analyze_query(intent)
-
-            elif intent.intent_type == 'track':
-                return self._handle_track_query(intent)
-
-            elif intent.intent_type == 'plot_dfu':
-                return self._handle_plot_dfu_query(intent)
-
-            elif intent.intent_type == 'plot':
-                return self._handle_plot_query(intent)
-
-            elif intent.intent_type == 'report':
-                return self._handle_report_query(intent)
-
-            else:
-                return {
-                    'status': 'error',
-                    'intent': intent.intent_type,
-                    'message': f"I'm not sure how to handle '{query}'. Try asking for 'help' to see examples.",
-                    'result': None
-                }
+            return self.query_router.route(intent)
 
         except Exception as e:
             logger.error(f"Error processing query: {e}", exc_info=True)
@@ -921,278 +895,12 @@ class DataAnalyst:
                 'result': None
             }
 
-    def _handle_list_query(self, intent) -> Dict:
-        """Handle 'list' intent queries."""
-        devices = self.df.groupby('device_id').agg({
-            'device_type': 'first',
-            'testing_date': ['min', 'max'],
-            'droplet_size_mean': 'count'
-        }).reset_index()
 
-        message = "Available devices:\n\n"
-        for _, row in devices.iterrows():
-            device_id = row[('device_id', '')]
-            device_type = row[('device_type', 'first')]
-            count = row[('droplet_size_mean', 'count')]
-            message += f"  - {device_id} ({device_type}) - {count} measurements\n"
-
-        return {
-            'status': 'success',
-            'intent': 'list',
-            'message': message,
-            'result': devices
-        }
-
-    def _handle_filter_query(self, intent) -> Dict:
-        """Handle 'filter' intent queries."""
-        filtered_df = self.df.copy()
-
-        # Apply filters from extracted entities
-        if 'device_type' in intent.entities:
-            filtered_df = filtered_df[filtered_df['device_type'] == intent.entities['device_type']]
-
-        if 'flowrate' in intent.entities:
-            filtered_df = filtered_df[filtered_df['aqueous_flowrate'] == intent.entities['flowrate']]
-
-        if 'pressure' in intent.entities:
-            filtered_df = filtered_df[filtered_df['oil_pressure'] == intent.entities['pressure']]
-
-        if 'fluid' in intent.entities:
-            # Check both aqueous and oil fluid columns
-            fluid = intent.entities['fluid']
-            filtered_df = filtered_df[
-                (filtered_df['aqueous_fluid'] == fluid) | (filtered_df['oil_fluid'] == fluid)
-            ]
-
-        message = f"Found {len(filtered_df)} measurements matching your criteria.\n\n"
-        message += f"Filters applied: {', '.join(f'{k}={v}' for k, v in intent.entities.items())}"
-
-        return {
-            'status': 'success',
-            'intent': 'filter',
-            'message': message,
-            'result': filtered_df
-        }
-
-    def _handle_compare_query(self, intent) -> Dict:
-        """Handle 'compare' intent queries."""
-        from datetime import datetime
-
-        # Generate output path
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        output_path = f"outputs/analyst/plots/nl_query_compare_{timestamp}.png"
-
-        # Call appropriate comparison method
-        device_type = intent.entities.get('device_type')
-        flowrate = intent.entities.get('flowrate')
-        pressure = intent.entities.get('pressure')
-
-        result = self.compare_devices_at_same_parameters(
-            device_type=device_type,
-            aqueous_flowrate=flowrate,
-            oil_pressure=pressure,
-            output_path=output_path
-        )
-
-        message = f"Comparison complete! Found {len(result)} devices.\n\n"
-        if device_type:
-            message += f"Device type: {device_type}\n"
-        if flowrate:
-            message += f"Flowrate: {flowrate} ml/hr\n"
-        if pressure:
-            message += f"Pressure: {pressure} mbar\n"
-
-        return {
-            'status': 'success',
-            'intent': 'compare',
-            'message': message,
-            'result': result,
-            'plot_path': output_path
-        }
-
-    def _handle_analyze_query(self, intent) -> Dict:
-        """Handle 'analyze' intent queries."""
-        from datetime import datetime
-
-        device_type = intent.entities.get('device_type')
-        if not device_type:
-            return {
-                'status': 'clarification_needed',
-                'intent': 'analyze',
-                'message': "Which device type would you like to analyze? (W13 or W14)",
-                'clarification': "Please specify a device type",
-                'result': None
-            }
-
-        # Determine parameter to analyze (flowrate or pressure)
-        parameter = 'aqueous_flowrate' if 'flowrate' in intent.entities else 'oil_pressure'
-        metric = intent.entities.get('metric', 'droplet_size_mean')
-
-        # Generate output path
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        output_path = f"outputs/analyst/plots/nl_query_analysis_{timestamp}.png"
-
-        result = self.analyze_flow_parameter_effects(
-            device_type=device_type,
-            parameter=parameter,
-            metric=metric,
-            output_path=output_path
-        )
-
-        message = f"Analysis complete for {device_type}!\n\n"
-        message += f"Parameter: {parameter}\n"
-        message += f"Metric: {metric}\n"
-        message += f"Correlation: {result['correlation']:.3f}\n"
-        message += f"Total measurements: {result['total_measurements']}\n"
-
-        return {
-            'status': 'success',
-            'intent': 'analyze',
-            'message': message,
-            'result': result,
-            'plot_path': output_path
-        }
-
-    def _handle_track_query(self, intent) -> Dict:
-        """Handle 'track' intent queries."""
-        from datetime import datetime
-
-        device_id = intent.entities.get('device_id')
-        if not device_id:
-            return {
-                'status': 'clarification_needed',
-                'intent': 'track',
-                'message': "Which device would you like to track? (e.g., W13_S1_R1)",
-                'clarification': "Please specify a device ID",
-                'result': None
-            }
-
-        # Generate output path
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        output_path = f"outputs/analyst/plots/nl_query_track_{timestamp}.png"
-
-        result = self.track_device_over_time(
-            device_id=device_id,
-            output_path=output_path
-        )
-
-        if len(result) == 0:
-            return {
-                'status': 'error',
-                'intent': 'track',
-                'message': f"No data found for device {device_id}",
-                'result': None
-            }
-
-        message = f"Tracking results for {device_id}:\n\n"
-        message += f"Total tests: {len(result)}\n"
-        message += f"Date range: {result['testing_date'].min()} to {result['testing_date'].max()}\n"
-        message += f"Mean droplet size: {result['droplet_size_mean'].mean():.2f} µm\n"
-
-        return {
-            'status': 'success',
-            'intent': 'track',
-            'message': message,
-            'result': result,
-            'plot_path': output_path
-        }
-
-    def _handle_plot_query(self, intent) -> Dict:
-        """Handle 'plot' intent queries."""
-        # Route to appropriate plot based on entities
-        if 'device_id' in intent.entities:
-            return self._handle_track_query(intent)
-        elif 'device_type' in intent.entities:
-            if 'flowrate' in intent.entities or 'pressure' in intent.entities:
-                return self._handle_analyze_query(intent)
-            else:
-                return self._handle_compare_query(intent)
-        else:
-            return {
-                'status': 'clarification_needed',
-                'intent': 'plot',
-                'message': "What would you like to plot? Try specifying a device type, device ID, or parameters.",
-                'clarification': "Please provide more details for the plot",
-                'result': None
-            }
-
-    def _handle_plot_dfu_query(self, intent, live_preview: bool = True) -> Dict:
-        """Handle 'plot_dfu' intent queries - plot metric vs DFU rows."""
-        from datetime import datetime
-
-        # Extract parameters from intent
-        device_type = intent.entities.get('device_type')
-        flowrate = intent.entities.get('flowrate')
-        pressure = intent.entities.get('pressure')
-        metric = intent.entities.get('metric', 'droplet_size_mean')
-
-        # Generate output path
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        output_path = f"outputs/analyst/plots/nl_query_dfu_{timestamp}.png"
-
-        try:
-            # Call the DFU plotting method with query text for context detection
-            result = self.plot_metric_vs_dfu(
-                metric=metric,
-                device_type=device_type,
-                aqueous_flowrate=flowrate,
-                oil_pressure=pressure,
-                output_path=output_path,
-                query_text=intent.raw_query,  # Pass original query for context detection
-                live_preview=live_preview  # Enable live preview
-            )
-
-            # Build success message with varying parameters info
-            message = f"DFU analysis complete!\n\n"
-            message += f"Metric: {metric}\n"
-            message += f"Found {result['num_devices']} device(s):\n"
-            for device in result['devices']:
-                message += f"  - {device}\n"
-            message += f"\nDFU rows measured: {', '.join(map(str, result['dfu_rows_measured']))}\n"
-            message += f"Total measurements: {result['total_measurements']}\n"
-
-            # Show varying parameters if detected
-            if result.get('varying_parameters'):
-                message += f"\nVarying parameters detected: {', '.join(result['varying_parameters'])}\n"
-                message += "(Legend includes context for differentiating devices)\n"
-
-            message += f"\nFilters applied: {', '.join(result['filters'])}" if result['filters'] else ""
-
-            return {
-                'status': 'success',
-                'intent': 'plot_dfu',
-                'message': message,
-                'result': result,
-                'plot_path': output_path
-            }
-
-        except ValueError as e:
-            # Handle case where no data found
-            return {
-                'status': 'error',
-                'intent': 'plot_dfu',
-                'message': f"Could not generate DFU plot: {str(e)}",
-                'result': None
-            }
-
-    def _handle_report_query(self, intent) -> Dict:
-        """Handle 'report' intent queries."""
-        from datetime import datetime
-
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        output_path = f"outputs/nl_query_report_{timestamp}.txt"
-
-        self.generate_summary_report(output_path=output_path)
-
-        message = f"Summary report generated!\n\nSaved to: {output_path}"
-
-        return {
-            'status': 'success',
-            'intent': 'report',
-            'message': message,
-            'result': None,
-            'report_path': output_path
-        }
+# ========================================================================
+# QUERY HANDLERS EXTRACTED TO DEDICATED MODULES
+# ========================================================================
+# All natural language query handlers have been moved to src/query_handlers/
+# and are accessed through the QueryRouter instance (self.query_router)
 
 
 # Example usage
