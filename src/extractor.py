@@ -10,6 +10,10 @@ from typing import Dict, Optional, List
 from datetime import datetime
 import logging
 import pandas as pd
+import os
+
+from .utils import safe_file_read, safe_file_readlines, sanitize_path_for_logging
+from .extraction_result import ExtractionResult
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -69,12 +73,13 @@ class MetadataExtractor:
             logger.warning(f"⚠ Could not parse device ID: {device_str}")
             return None
 
-    def parse_date(self, date_str: str) -> Optional[str]:
+    def parse_date(self, date_str: str, file_path: Optional[str] = None) -> Optional[str]:
         """
-        Parse date string in various formats.
+        Parse date string in various formats with validation.
 
         Args:
             date_str: e.g., "06102025" or "0610"
+            file_path: Optional file path for context validation
 
         Returns:
             ISO format date string (YYYY-MM-DD) or None
@@ -85,18 +90,114 @@ class MetadataExtractor:
             day = match.group(1)
             month = match.group(2)
             year = match.group(3)
-            return f"{year}-{month}-{day}"
 
-        # Try short format (DDMM)
+            # Validate date components
+            try:
+                date_obj = datetime(int(year), int(month), int(day))
+                return f"{year}-{month}-{day}"
+            except ValueError as e:
+                logger.warning(f"⚠ Invalid date components in {date_str}: {e}")
+                return None
+
+        # Try short format (DDMM) with intelligent year detection
         match = re.match(self.DATE_SHORT_PATTERN, date_str)
         if match:
-            day = match.group(1)
-            month = match.group(2)
-            # Assume current year
-            return f"{self.current_year}-{month}-{day}"
+            day = int(match.group(1))
+            month = int(match.group(2))
+
+            # Validate month and day ranges
+            if month < 1 or month > 12:
+                logger.warning(f"⚠ Invalid month in date: {date_str}")
+                return None
+            if day < 1 or day > 31:
+                logger.warning(f"⚠ Invalid day in date: {date_str}")
+                return None
+
+            # Determine year with validation
+            year = self._determine_year_for_short_date(day, month, file_path, date_str)
+
+            try:
+                date_obj = datetime(year, month, day)
+                return f"{year:04d}-{month:02d}-{day:02d}"
+            except ValueError as e:
+                logger.warning(f"⚠ Invalid date {day}/{month}/{year}: {e}")
+                return None
 
         logger.warning(f"⚠ Could not parse date: {date_str}")
         return None
+
+    def _determine_year_for_short_date(self, day: int, month: int, file_path: Optional[str], date_str: str) -> int:
+        """
+        Intelligently determine year for short date format (DDMM).
+
+        Uses file modification time as validation hint when available.
+
+        Args:
+            day: Day component
+            month: Month component
+            file_path: Optional file path for validation
+            date_str: Original date string for logging
+
+        Returns:
+            Year as integer
+        """
+        current_year = self.current_year
+
+        # Try current year first
+        try:
+            test_date_current = datetime(current_year, month, day)
+        except ValueError:
+            # Invalid date (e.g., Feb 29 in non-leap year)
+            logger.warning(f"⚠ Date {day}/{month}/{current_year} is invalid, trying previous year")
+            current_year -= 1
+            try:
+                test_date_current = datetime(current_year, month, day)
+            except ValueError:
+                logger.warning(f"⚠ Date {day}/{month}/{current_year} is also invalid")
+                return current_year  # Return anyway, will fail later
+
+        # If no file path for validation, use current year with warning
+        if not file_path or not os.path.exists(file_path):
+            logger.info(f"ⓘ Assuming year {current_year} for date {date_str} (no file validation available)")
+            return current_year
+
+        try:
+            # Get file modification time for validation
+            file_mtime = datetime.fromtimestamp(os.path.getmtime(file_path))
+
+            # Check if current year assumption makes date unreasonably far in future
+            if test_date_current > datetime.now():
+                days_in_future = (test_date_current - datetime.now()).days
+                if days_in_future > 365:  # More than a year in future
+                    previous_year = current_year - 1
+                    logger.warning(f"⚠ Date {date_str} with year {current_year} is {days_in_future} days in future, using {previous_year}")
+                    return previous_year
+
+            # Check if date is reasonable compared to file modification time
+            time_diff = abs((test_date_current - file_mtime).days)
+            if time_diff > 730:  # More than 2 years difference
+                # File was modified much earlier/later than parsed date suggests
+                file_year = file_mtime.year
+                logger.warning(f"⚠ Parsed date year {current_year} differs significantly from file modification year {file_year}")
+                logger.warning(f"   File modified: {file_mtime.strftime('%Y-%m-%d')}, parsed date would be: {test_date_current.strftime('%Y-%m-%d')}")
+
+                # Use file year if it makes more sense
+                try:
+                    file_year_date = datetime(file_year, month, day)
+                    file_year_diff = abs((file_year_date - file_mtime).days)
+                    if file_year_diff < time_diff:
+                        logger.info(f"ⓘ Using file modification year {file_year} for better accuracy")
+                        return file_year
+                except ValueError:
+                    pass  # File year doesn't work either
+
+            logger.debug(f"✓ Year {current_year} for date {date_str} validated against file modification time")
+            return current_year
+
+        except (OSError, ValueError) as e:
+            logger.debug(f"Could not validate date against file time: {e}")
+            logger.info(f"ⓘ Using year {current_year} for date {date_str} (file validation failed)")
+            return current_year
 
     def parse_fluids(self, fluid_str: str) -> Optional[Dict]:
         """
@@ -199,8 +300,22 @@ class MetadataExtractor:
                 logger.warning("⚠ No local_path provided")
                 return None
 
-            # Read CSV from local file
-            df = pd.read_csv(local_path)
+            # Read CSV from local file with encoding handling
+            try:
+                # Try UTF-8 first (most common)
+                df = pd.read_csv(local_path, encoding='utf-8')
+            except UnicodeDecodeError:
+                try:
+                    # Fall back to latin-1 for special characters
+                    df = pd.read_csv(local_path, encoding='latin-1')
+                    logger.debug(f"Used latin-1 encoding for CSV: {sanitize_path_for_logging(local_path)}")
+                except UnicodeDecodeError:
+                    # Final fallback to cp1252 (Windows default)
+                    df = pd.read_csv(local_path, encoding='cp1252', errors='replace')
+                    logger.warning(f"Used cp1252 with error replacement for CSV: {sanitize_path_for_logging(local_path)}")
+            except Exception as e:
+                logger.error(f"Failed to read CSV file: {sanitize_path_for_logging(local_path)}: {e}")
+                return None
 
             # Extract basic statistics
             stats = {
@@ -255,9 +370,11 @@ class MetadataExtractor:
                 logger.warning("⚠ No local_path provided")
                 return None
 
-            # Read TXT from local file
-            with open(local_path, 'r') as f:
-                content = f.read()
+            # Read TXT from local file using safe encoding handling
+            content = safe_file_read(local_path)
+            if content is None:
+                logger.error(f"Failed to read file: {sanitize_path_for_logging(local_path)}")
+                return None
 
             lines = content.strip().split('\n')
 
@@ -339,18 +456,24 @@ class MetadataExtractor:
                 metadata.update(device_data)
 
         if len(parts) >= 2:
-            bonding_date = self.parse_date(parts[1])
+            bonding_date = self.parse_date(parts[1], local_path)
             if bonding_date:
                 metadata['bonding_date'] = bonding_date
+                # Track if year was assumed for short date format
+                if len(parts[1]) == 4:  # DDMM format
+                    metadata['bonding_date_year_assumed'] = True
 
         # Determine if level 2 is a testing date or something else
         next_idx = 2  # Default: start parsing from level 2
         if len(parts) >= 3:
             # Could be testing date or fluids (testing date may be absent)
             # Try parsing as date first
-            testing_date = self.parse_date(parts[2])
+            testing_date = self.parse_date(parts[2], local_path)
             if testing_date:
                 metadata['testing_date'] = testing_date
+                # Track if year was assumed for short date format
+                if len(parts[2]) == 4:  # DDMM format
+                    metadata['testing_date_year_assumed'] = True
                 next_idx = 3  # Skip testing date, continue from level 3
             else:
                 # Not a date, level 2 is probably fluids or flow params
@@ -408,11 +531,17 @@ class MetadataExtractor:
                 if content_data:
                     metadata['file_content_data'] = content_data
 
-        # Apply default fluids if not present
+        # Track missing fluid information instead of applying defaults
+        # This preserves data quality for scientific analysis
         if not metadata.get('aqueous_fluid'):
-            metadata['aqueous_fluid'] = 'SDS'
+            logger.info(f"ⓘ No aqueous fluid found in path: {sanitize_path_for_logging(file_path)}")
+            metadata['aqueous_fluid'] = None
+            metadata['missing_aqueous_fluid'] = True
+
         if not metadata.get('oil_fluid'):
-            metadata['oil_fluid'] = 'SO'
+            logger.info(f"ⓘ No oil fluid found in path: {sanitize_path_for_logging(file_path)}")
+            metadata['oil_fluid'] = None
+            metadata['missing_oil_fluid'] = True
 
         # Validate dates
         self._validate_dates(metadata)
@@ -421,6 +550,47 @@ class MetadataExtractor:
         metadata['parse_quality'] = self._assess_parse_quality(metadata)
 
         return metadata
+
+    def extract_from_path_structured(self, file_path: str, local_path: Optional[str] = None) -> ExtractionResult:
+        """
+        Extract metadata with structured error reporting.
+
+        Wrapper around extract_from_path that provides ExtractionResult format.
+
+        Args:
+            file_path: Path to extract metadata from
+            local_path: Optional local file path for content reading
+
+        Returns:
+            ExtractionResult with success status and metadata
+        """
+        if not file_path:
+            return ExtractionResult.failure_result("Empty file path provided", file_path)
+
+        try:
+            metadata = self.extract_from_path(file_path, local_path)
+
+            if metadata:
+                # Determine quality and create successful result
+                quality = metadata.get('parse_quality', 'unknown')
+                result = ExtractionResult.success_result(metadata, quality, file_path)
+
+                # Add warnings for missing information
+                if metadata.get('missing_aqueous_fluid'):
+                    result.add_warning("Aqueous fluid information not found in path")
+                if metadata.get('missing_oil_fluid'):
+                    result.add_warning("Oil fluid information not found in path")
+                if metadata.get('bonding_date_year_assumed'):
+                    result.add_warning("Year assumed for bonding date (short format)")
+                if metadata.get('testing_date_year_assumed'):
+                    result.add_warning("Year assumed for testing date (short format)")
+
+                return result
+            else:
+                return ExtractionResult.failure_result("Failed to extract metadata", file_path)
+
+        except Exception as e:
+            return ExtractionResult.failure_result(f"Extraction error: {str(e)}", file_path)
 
     def _validate_dates(self, metadata: Dict) -> None:
         """
@@ -448,21 +618,35 @@ class MetadataExtractor:
         Assess quality of metadata extraction.
 
         Returns:
-            'complete', 'partial', or 'incomplete'
+            'complete', 'partial', 'minimal', or 'failed'
         """
-        required_fields = [
-            'device_type', 'bonding_date', 'aqueous_flowrate',
-            'oil_pressure', 'measurement_type', 'dfu_row'
-        ]
+        # Core required fields for meaningful analysis
+        core_fields = ['device_type', 'bonding_date', 'measurement_type']
 
-        missing = [field for field in required_fields if field not in metadata]
+        # Important but sometimes absent fields
+        important_fields = ['aqueous_flowrate', 'oil_pressure', 'dfu_row']
 
-        if not missing:
+        # Optional fields that may legitimately be missing
+        # Note: fluids removed from required list since they may genuinely be absent
+
+        core_missing = [field for field in core_fields if not metadata.get(field)]
+        important_missing = [field for field in important_fields if not metadata.get(field)]
+
+        # Track fluid information quality separately
+        fluid_info_available = bool(metadata.get('aqueous_fluid') or metadata.get('oil_fluid'))
+
+        if core_missing:
+            # Core information missing - cannot perform meaningful analysis
+            return 'failed'
+        elif not important_missing and fluid_info_available:
+            # All important fields present plus fluid information
             return 'complete'
-        elif len(missing) <= 2:
+        elif len(important_missing) <= 1:
+            # Most important fields present, usable for analysis
             return 'partial'
         else:
-            return 'incomplete'
+            # Missing multiple important fields, limited utility
+            return 'minimal'
 
     def batch_extract(self, file_paths: List[str], file_metadata: Optional[List[Dict]] = None) -> List[Dict]:
         """
