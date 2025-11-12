@@ -1,0 +1,25 @@
+================================================================================
+DETAILED EXTRACTION STATISTICS REPORT
+Generated: 2025-11-07 14:41:46
+================================================================================
+
+EXTRACTION QUALITY SUMMARY
+--------------------------------------------------------------------------------
+COMPLETE  :  434 ( 47.2%)
+PARTIAL   :   79 (  8.6%)
+MINIMAL   :  277 ( 30.1%)
+FAILED    :  129 ( 14.0%)
+
+DEVICE TYPE DISTRIBUTION
+--------------------------------------------------------------------------------
+W13 Devices: 513 files across 1 unique devices
+W14 Devices: 0 files across 0 unique devices
+
+Top 15 Devices by File Count:
+  W13_S2_R9      :  513 files
+
+TIMEPOINT EXTRACTION STATISTICS
+--------------------------------------------------------------------------------
+Files with timepoint data: 16 (1.7%)
+Unique timepoints found: 2
+Distribution:

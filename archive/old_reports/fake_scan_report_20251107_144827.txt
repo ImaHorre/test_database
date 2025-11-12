@@ -1,0 +1,171 @@
+================================================================================
+FAKE SCAN ANALYSIS REPORT - POST FIXES
+Generated: 2025-11-07 14:48:27
+================================================================================
+
+SUMMARY
+--------------------------------------------------------------------------------
+Total files in tree:       1043
+Excluded (Archive, etc.):  123
+Files processed:           920
+
+Successful extractions:    787 (85.5%)
+  - Complete quality:      642
+  - Partial quality:       69
+  - Minimal quality:       76
+Failed extractions:        133
+
+TYPO CORRECTIONS APPLIED
+--------------------------------------------------------------------------------
+  fluid_format: 200 corrections
+  flow_unit_mlmin: 29 corrections
+  measurement_type: 25 corrections
+
+INFERRED FIELDS
+--------------------------------------------------------------------------------
+  measurement_type: 413 inferences
+  aqueous_fluid: 515 inferences
+  oil_fluid: 515 inferences
+
+MISSING PRIORITY FIELDS
+--------------------------------------------------------------------------------
+
+device_id: 130 files missing
+  - 5mlhr250mbar/freq_analysis/5mlhr300mbar/Report/flagged_videos.txt
+  - 5mlhr250mbar/2010_3010_W13_S2_R6_SDSSO_1mlhr100mbar_DFU2_ROI1_frequency_analysis.txt
+  - 1mlhr200mbar/2010_3010_W13_S2_R6_SDSSO_1mlhr200mbar_DFU1_B_droplet_annotations_20251031_142039.csv
+  - 1mlhr200mbar/2010_3010_W13_S2_R6_SDSSO_1mlhr200mbar_DFU1_B_ROI1_frequency_analysis.txt
+  - 1mlhr200mbar/2010_3010_W13_S2_R6_SDSSO_1mlhr200mbar_DFU1_B_ROI2_frequency_analysis.txt
+  ... and 125 more
+
+bonding_date: 130 files missing
+  - 5mlhr250mbar/freq_analysis/5mlhr300mbar/Report/flagged_videos.txt
+  - 5mlhr250mbar/2010_3010_W13_S2_R6_SDSSO_1mlhr100mbar_DFU2_ROI1_frequency_analysis.txt
+  - 1mlhr200mbar/2010_3010_W13_S2_R6_SDSSO_1mlhr200mbar_DFU1_B_droplet_annotations_20251031_142039.csv
+  - 1mlhr200mbar/2010_3010_W13_S2_R6_SDSSO_1mlhr200mbar_DFU1_B_ROI1_frequency_analysis.txt
+  - 1mlhr200mbar/2010_3010_W13_S2_R6_SDSSO_1mlhr200mbar_DFU1_B_ROI2_frequency_analysis.txt
+  ... and 125 more
+
+measurement_type: 133 files missing
+  - 5mlhr250mbar/freq_analysis/5mlhr300mbar/Report/flagged_videos.txt
+  - 5mlhr250mbar/2010_3010_W13_S2_R6_SDSSO_1mlhr100mbar_DFU2_ROI1_frequency_analysis.txt
+  - 1mlhr200mbar/2010_3010_W13_S2_R6_SDSSO_1mlhr200mbar_DFU1_B_droplet_annotations_20251031_142039.csv
+  - 1mlhr200mbar/2010_3010_W13_S2_R6_SDSSO_1mlhr200mbar_DFU1_B_ROI1_frequency_analysis.txt
+  - 1mlhr200mbar/2010_3010_W13_S2_R6_SDSSO_1mlhr200mbar_DFU1_B_ROI2_frequency_analysis.txt
+  ... and 128 more
+
+aqueous_flowrate: 208 files missing
+  - 5mlhr250mbar/2010_3010_W13_S2_R6_SDSSO_1mlhr100mbar_DFU2_ROI1_frequency_analysis.txt
+  - 1mlhr200mbar/2010_3010_W13_S2_R6_SDSSO_1mlhr200mbar_DFU1_B_droplet_annotations_20251031_142039.csv
+  - 1mlhr200mbar/2010_3010_W13_S2_R6_SDSSO_1mlhr200mbar_DFU1_B_ROI1_frequency_analysis.txt
+  - 1mlhr200mbar/2010_3010_W13_S2_R6_SDSSO_1mlhr200mbar_DFU1_B_ROI2_frequency_analysis.txt
+  - 1mlhr200mbar/2010_3010_W13_S2_R6_SDSSO_1mlhr200mbar_DFU1_B_ROI3_frequency_analysis.txt
+  ... and 203 more
+
+oil_pressure: 208 files missing
+  - 5mlhr250mbar/2010_3010_W13_S2_R6_SDSSO_1mlhr100mbar_DFU2_ROI1_frequency_analysis.txt
+  - 1mlhr200mbar/2010_3010_W13_S2_R6_SDSSO_1mlhr200mbar_DFU1_B_droplet_annotations_20251031_142039.csv
+  - 1mlhr200mbar/2010_3010_W13_S2_R6_SDSSO_1mlhr200mbar_DFU1_B_ROI1_frequency_analysis.txt
+  - 1mlhr200mbar/2010_3010_W13_S2_R6_SDSSO_1mlhr200mbar_DFU1_B_ROI2_frequency_analysis.txt
+  - 1mlhr200mbar/2010_3010_W13_S2_R6_SDSSO_1mlhr200mbar_DFU1_B_ROI3_frequency_analysis.txt
+  ... and 203 more
+
+EXAMPLE SUCCESSFUL EXTRACTIONS (Complete Quality)
+--------------------------------------------------------------------------------
+
+File: 5mlhr250mbar/dfu_measure/0610_2310_W13_S1_R2_5mlhr250mbar_NaCasSO_DFU1_B_t5_droplet_annotations_20251024_143119.csv
+  Device: W13_S1_R2
+  Bonding Date: 2025-10-06
+  Fluids: NaCas_SO
+  Flow: 5 ml/hr, 250 mbar
+  Measurement Type: dfu_measure
+  DFU: 1
+
+File: 5mlhr250mbar/dfu_measure/0610_2310_W13_S1_R2_5mlhr250mbar_NaCasSO_DFU1_t5_droplet_annotations_20251024_143328.csv
+  Device: W13_S1_R2
+  Bonding Date: 2025-10-06
+  Fluids: NaCas_SO
+  Flow: 5 ml/hr, 250 mbar
+  Measurement Type: dfu_measure
+  DFU: 1
+
+File: 5mlhr250mbar/dfu_measure/0610_2310_W13_S1_R2_5mlhr250mbar_NaCasSO_DFU1_t6_droplet_annotations_20251024_143620.csv
+  Device: W13_S1_R2
+  Bonding Date: 2025-10-06
+  Fluids: NaCas_SO
+  Flow: 5 ml/hr, 250 mbar
+  Measurement Type: dfu_measure
+  DFU: 1
+
+File: 5mlhr250mbar/dfu_measure/0610_2310_W13_S1_R2_5mlhr250mbar_NaCasSO_DFU2_t5_droplet_annotations_20251024_143951.csv
+  Device: W13_S1_R2
+  Bonding Date: 2025-10-06
+  Fluids: NaCas_SO
+  Flow: 5 ml/hr, 250 mbar
+  Measurement Type: dfu_measure
+  DFU: 2
+
+File: 5mlhr250mbar/freq_analysis/0610_2310_W13_S1_R2_5mlhr250mbar_NaCasSO_DFU1_B_t5_ROI2_frequency_analysis.txt
+  Device: W13_S1_R2
+  Bonding Date: 2025-10-06
+  Fluids: NaCas_SO
+  Flow: 5 ml/hr, 250 mbar
+  Measurement Type: freq_analysis
+  DFU: 1
+
+EXAMPLE FAILURES
+--------------------------------------------------------------------------------
+
+File: 5mlhr250mbar/freq_analysis/5mlhr300mbar/Report/flagged_videos.txt
+  Device: MISSING
+  Bonding Date: MISSING
+  Measurement Type: MISSING
+
+File: 5mlhr250mbar/2010_3010_W13_S2_R6_SDSSO_1mlhr100mbar_DFU2_ROI1_frequency_analysis.txt
+  Device: MISSING
+  Bonding Date: MISSING
+  Measurement Type: MISSING
+
+File: 1mlhr200mbar/2010_3010_W13_S2_R6_SDSSO_1mlhr200mbar_DFU1_B_droplet_annotations_20251031_142039.csv
+  Device: MISSING
+  Bonding Date: MISSING
+  Measurement Type: MISSING
+
+File: 1mlhr200mbar/2010_3010_W13_S2_R6_SDSSO_1mlhr200mbar_DFU1_B_ROI1_frequency_analysis.txt
+  Device: MISSING
+  Bonding Date: MISSING
+  Measurement Type: MISSING
+
+File: 1mlhr200mbar/2010_3010_W13_S2_R6_SDSSO_1mlhr200mbar_DFU1_B_ROI2_frequency_analysis.txt
+  Device: MISSING
+  Bonding Date: MISSING
+  Measurement Type: MISSING
+
+File: 1mlhr200mbar/2010_3010_W13_S2_R6_SDSSO_1mlhr200mbar_DFU1_B_ROI3_frequency_analysis.txt
+  Device: MISSING
+  Bonding Date: MISSING
+  Measurement Type: MISSING
+
+File: 1mlhr200mbar/2010_3010_W13_S2_R6_SDSSO_1mlhr200mbar_DFU1_droplet_annotations_20251031_141641.csv
+  Device: MISSING
+  Bonding Date: MISSING
+  Measurement Type: MISSING
+
+File: 1mlhr200mbar/2010_3010_W13_S2_R6_SDSSO_1mlhr200mbar_DFU1_ROI1_frequency_analysis.txt
+  Device: MISSING
+  Bonding Date: MISSING
+  Measurement Type: MISSING
+
+File: 1mlhr200mbar/2010_3010_W13_S2_R6_SDSSO_1mlhr200mbar_DFU1_ROI2_frequency_analysis.txt
+  Device: MISSING
+  Bonding Date: MISSING
+  Measurement Type: MISSING
+
+File: 1mlhr200mbar/2010_3010_W13_S2_R6_SDSSO_1mlhr200mbar_DFU1_ROI3_frequency_analysis.txt
+  Device: MISSING
+  Bonding Date: MISSING
+  Measurement Type: MISSING
+
+================================================================================
+END OF REPORT
+================================================================================

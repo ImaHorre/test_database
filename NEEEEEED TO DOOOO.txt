@@ -1,0 +1,10 @@
+make sure databsae takes into accoutn flagged data
+
+meanign flagged_videos.txt needs to be in app. level in test database fodler tree. -inside test date?
+
+this then gives a flagged column  true/false + reason 
+
+allow user to inc. not inc. flagged in data exports/plots 
+
+allow user to select certain flags e.g remove all 'defective' keep the others 
+

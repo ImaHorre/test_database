@@ -1,0 +1,113 @@
+================================================================================
+FAKE SCAN ANALYSIS REPORT - POST FIXES
+Generated: 2025-11-07 14:18:02
+================================================================================
+
+SUMMARY
+--------------------------------------------------------------------------------
+Total files in tree:       49
+Excluded (Archive, etc.):  0
+Files processed:           49
+
+Successful extractions:    16 (32.7%)
+  - Complete quality:      0
+  - Partial quality:       16
+  - Minimal quality:       0
+Failed extractions:        33
+
+TYPO CORRECTIONS APPLIED
+--------------------------------------------------------------------------------
+  None
+
+INFERRED FIELDS
+--------------------------------------------------------------------------------
+  aqueous_fluid: 49 inferences
+  oil_fluid: 49 inferences
+
+MISSING PRIORITY FIELDS
+--------------------------------------------------------------------------------
+
+aqueous_flowrate: 33 files missing
+  - W14_S3_R12/18092025/ROI1_frequency_analysis.txt
+  - W14_S3_R12/18092025/ROI2_frequency_analysis.txt
+  - W14_S3_R12/18092025/ROI3_frequency_analysis.txt
+  - W14_S3_R12/18092025/ROI1_frequency_analysis.txt
+  - W14_S3_R12/18092025/ROI2_frequency_analysis.txt
+  ... and 28 more
+
+oil_pressure: 33 files missing
+  - W14_S3_R12/18092025/ROI1_frequency_analysis.txt
+  - W14_S3_R12/18092025/ROI2_frequency_analysis.txt
+  - W14_S3_R12/18092025/ROI3_frequency_analysis.txt
+  - W14_S3_R12/18092025/ROI1_frequency_analysis.txt
+  - W14_S3_R12/18092025/ROI2_frequency_analysis.txt
+  ... and 28 more
+
+measurement_type: 33 files missing
+  - W14_S3_R12/18092025/ROI1_frequency_analysis.txt
+  - W14_S3_R12/18092025/ROI2_frequency_analysis.txt
+  - W14_S3_R12/18092025/ROI3_frequency_analysis.txt
+  - W14_S3_R12/18092025/ROI1_frequency_analysis.txt
+  - W14_S3_R12/18092025/ROI2_frequency_analysis.txt
+  ... and 28 more
+
+EXAMPLE SUCCESSFUL EXTRACTIONS (Complete Quality)
+--------------------------------------------------------------------------------
+  No complete quality extractions
+
+EXAMPLE FAILURES
+--------------------------------------------------------------------------------
+
+File: W14_S3_R12/18092025/ROI1_frequency_analysis.txt
+  Device: W14_S3_R12
+  Bonding Date: 2025-09-18
+  Measurement Type: MISSING
+
+File: W14_S3_R12/18092025/ROI2_frequency_analysis.txt
+  Device: W14_S3_R12
+  Bonding Date: 2025-09-18
+  Measurement Type: MISSING
+
+File: W14_S3_R12/18092025/ROI3_frequency_analysis.txt
+  Device: W14_S3_R12
+  Bonding Date: 2025-09-18
+  Measurement Type: MISSING
+
+File: W14_S3_R12/18092025/ROI1_frequency_analysis.txt
+  Device: W14_S3_R12
+  Bonding Date: 2025-09-18
+  Measurement Type: MISSING
+
+File: W14_S3_R12/18092025/ROI2_frequency_analysis.txt
+  Device: W14_S3_R12
+  Bonding Date: 2025-09-18
+  Measurement Type: MISSING
+
+File: W14_S3_R12/18092025/ROI3_frequency_analysis.txt
+  Device: W14_S3_R12
+  Bonding Date: 2025-09-18
+  Measurement Type: MISSING
+
+File: W14_S3_R12/18092025/ROI4_frequency_analysis.txt
+  Device: W14_S3_R12
+  Bonding Date: 2025-09-18
+  Measurement Type: MISSING
+
+File: W14_S3_R12/18092025/ROI5_frequency_analysis.txt
+  Device: W14_S3_R12
+  Bonding Date: 2025-09-18
+  Measurement Type: MISSING
+
+File: W14_S3_R12/18092025/ROI1_frequency_analysis.txt
+  Device: W14_S3_R12
+  Bonding Date: 2025-09-18
+  Measurement Type: MISSING
+
+File: W14_S3_R12/18092025/ROI2_frequency_analysis.txt
+  Device: W14_S3_R12
+  Bonding Date: 2025-09-18
+  Measurement Type: MISSING
+
+================================================================================
+END OF REPORT
+================================================================================

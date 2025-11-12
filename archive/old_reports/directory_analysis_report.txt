@@ -1,0 +1,676 @@
+============================================================
+ONEDRIVE DIRECTORY STRUCTURE ANALYSIS REPORT
+Scanner & Extractor Compatibility Assessment
+Generated: 2025-11-07
+============================================================
+
+EXECUTIVE SUMMARY
+-----------------
+The OneDrive directory structure deviates significantly from the expected
+schema defined in the scanner and extractor code. Multiple critical issues
+will prevent successful data extraction:
+
+- Missing expected folder hierarchy levels (dfu_measure/freq_analysis folders)
+- Inconsistent flow rate units (mlmin vs mlhr)
+- Fluid naming variations (underscore vs no underscore)
+- Folder name typos
+- Files placed at wrong hierarchy levels
+
+Estimated Success Rate: ~40-60% of files will parse correctly with current code.
+
+
+============================================================
+CATEGORY 1: FOLDER STRUCTURE VIOLATIONS
+============================================================
+
+ISSUE 1.1: Missing Measurement Type Folders (CRITICAL)
+-------------------------------------------------------
+Root Cause:
+  The extractor expects this hierarchy:
+    Device/BondingDate/TestingDate/Fluids/FlowParams/[dfu_measure or freq_analysis]/files
+
+  Many directories have files directly under the flow parameter folder WITHOUT
+  the intermediate dfu_measure/ or freq_analysis/ folders.
+
+Examples Found:
+  W13_S2_R6/20102025/30102025/SDSSO/10mlhr200mbar/
+    ├── Files placed HERE (WRONG - no dfu_measure/ folder)
+    └── Expected: dfu_measure/ then files inside
+
+  W14_S1_R4/0610/0710/15mlhr250mbar/
+    └── Files placed directly here (missing both dfu_measure and freq_analysis)
+
+Impact:
+  - Files will be discovered by scanner (it finds all CSV/TXT files)
+  - Extractor will NOT find 'measurement_type' field
+  - Path parsing will fail to distinguish between dfu_measure and freq_analysis data
+  - Database will have NULL measurement_type, making data unusable for analysis
+
+Expected Behavior:
+  metadata['measurement_type'] = 'dfu_measure' OR 'freq_analysis'
+
+Actual Behavior:
+  metadata['measurement_type'] = None (missing from path)
+  parse_quality = 'failed' (core field missing)
+
+How to Fix:
+  OPTION A: Restructure directories to add missing folders
+    - Create dfu_measure/ folders where CSV files exist
+    - Create freq_analysis/ folders where TXT files exist
+    - Move files into appropriate folders
+
+  OPTION B: Modify extractor logic
+    - Add fallback detection based on file type
+    - If no measurement_type folder found, infer from file extension:
+      * CSV files → dfu_measure
+      * TXT files → freq_analysis
+    - Add warning flag for inferred measurement types
+
+Locations Affected:
+  - W13_S2_R6/20102025/30102025/SDSSO/ (multiple flow parameter folders)
+  - W14_S1_R4/0610/0710/15mlhr250mbar/
+  - W14_S1_R4/0610/0710/15mlhr400mbar/
+  - W14_S1_R4/0610/0710/25mlhr400mbar/
+  - Archive/W14_NA3_defect/250925/ (entire subtree)
+
+
+COMMENT: codee in OPTION B. the information whether its a dfu measure or freq analysis is in the file type. 
+
+
+ISSUE 1.2: "outputs" Folder Not Recognized
+-------------------------------------------
+Root Cause:
+  Code expects folders named exactly "dfu_measure" or "freq_analysis"
+  Some directories have an "outputs/" folder containing duplicate files
+
+Example:
+  W13_S1_R2/06102025/13102025/10mlhr200mbar/
+    ├── dfu_measure/ (recognized ✓)
+    ├── freq_analysis/ (recognized ✓)
+    └── outputs/ (NOT recognized - files will be parsed with wrong path)
+
+Impact:
+  - Files inside outputs/ folder will be scanned
+  - "outputs" will be treated as an unknown path component
+  - Parser may attempt to match "outputs" against fluid/flow patterns
+  - Duplicate entries in database (same files exist in both locations)
+
+How to Fix:
+  OPTION A: Add "outputs" to scanner exclusion list
+    - Modify scanner to skip "outputs/" directories entirely
+    - Prevents duplicate database entries
+
+  OPTION B: Include outputs folder as valid measurement location
+    - Update extractor to recognize "outputs" as alias for measurement folder
+    - Need to determine if it should map to dfu_measure or freq_analysis
+
+
+COMMENT: option A. we can exclude this from teh scan. 
+
+
+ISSUE 1.3: Archive Folder Has Non-Standard Structure
+------------------------------------------------------
+Root Cause:
+  Archive/ folder contains legacy data with completely different hierarchy
+  Does not follow Device/Date/Date/Fluids/Flow pattern
+
+Examples:
+  Archive/W13_S4_R1X/1809_W13_S4_R1X/
+    └── Contains MP4 videos and JPG images (not CSV/TXT measurement files)
+
+  Archive/W14_NA3_defect/250925/1mlmin50mbar/dfu_measure/
+    └── Files use "NA3" as device identifier (not W13/W14 pattern)
+
+Impact:
+  - Device ID parsing will fail ("W13_S4_R1X" has X suffix, not numeric)
+  - Date folder "1809_W13_S4_R1X" will not parse as date (contains device ID)
+  - "NA3" device ID will not match pattern (expects W##_S#_R# format)
+  - Videos/images will be ignored by scanner (only scans CSV/TXT)
+
+How to Fix:
+  OPTION A: Exclude Archive folder entirely
+    - Add "Archive" to scanner's directory exclusion list
+    - Document that archived data requires manual processing
+
+  OPTION B: Create separate parsing rules for Archive data
+    - Implement archive-specific metadata extraction
+    - Requires understanding Archive folder's organizational logic
+
+
+COMMENT: Option A, exclude. 
+
+
+ISSUE 1.4: Folder Name Typo: "freq_analsis"
+--------------------------------------------
+Root Cause:
+  Spelling error in folder name (missing 'y')
+
+Location:
+  W14_S1_R4/0610/0710/1mlhr150mbar/freq_analsis/
+
+Impact:
+  - Extractor checks for exact match "freq_analysis"
+  - "freq_analsis" will NOT be recognized
+  - All files inside this folder will fail to extract measurement_type
+  - Files will be marked as parse_quality='failed'
+
+How to Fix:
+  OPTION A: Rename folder in OneDrive
+    freq_analsis/ → freq_analysis/
+
+  OPTION B: Add typo handling to extractor
+    - Check for both "freq_analysis" and "freq_analsis"
+    - Log warning when typo detected
+
+
+Option B: add soem typo handling across all parsing types. Also see issue 1.1, we can still get teh data in this example from the file type. 
+
+
+============================================================
+CATEGORY 2: FLUID NAMING INCONSISTENCIES
+============================================================
+
+ISSUE 2.1: Underscore vs No-Underscore in Fluid Names
+------------------------------------------------------
+Root Cause:
+  Extractor expects fluids with underscore separator: "NaCas_SO", "SDS_SO"
+  Some paths use no underscore: "SDSSO", "NaCasSO"
+
+Regex Pattern Expected:
+  r'^([A-Za-z]+)_([A-Za-z]+)$'  # Requires underscore
+
+Examples Found:
+  Expected: NaCas_SO    Actual: NaCasSO  (78 vs 0 occurrences)
+  Expected: SDS_SO      Actual: SDSSO    (52 vs 1 occurrence)
+
+Locations:
+  W13_S2_R6/20102025/30102025/SDSSO/
+  (Folder name is "SDSSO" but file names contain "SDSSO" without underscore)
+
+Impact:
+  - parse_fluids() will return None
+  - metadata['aqueous_fluid'] = None
+  - metadata['oil_fluid'] = None
+  - metadata['missing_aqueous_fluid'] = True
+  - metadata['missing_oil_fluid'] = True
+  - parse_quality downgraded to 'partial' or 'minimal'
+
+How to Fix:
+  OPTION A: Rename folders to include underscore
+    SDSSO/ → SDS_SO/
+    NaCasSO/ → NaCas_SO/
+
+  OPTION B: Update regex to handle both formats
+    OLD: r'^([A-Za-z]+)_([A-Za-z]+)$'
+    NEW: r'^([A-Za-z]+)_?([A-Za-z]+)$'  # Underscore optional
+
+    Then add logic to split on underscore if present, or use heuristic:
+      SDSSO → SDS + SO (split before SO/BO suffixes)
+      NaCasSO → NaCas + SO
+
+COMMENT: it should be able to parse if there is SDSSO, SDS_SO SDS+SO etc, treat it as a typo and fix for various alternatives. 
+
+
+ISSUE 2.2: Missing Fluid Information in Hierarchy
+--------------------------------------------------
+Root Cause:
+  Some paths omit the fluids level entirely
+
+Example:
+  W13_S1_R2/06102025/13102025/10mlhr200mbar/dfu_measure/
+    (No fluid folder between date and flow parameters)
+
+Impact:
+  - Parser skips fluid extraction
+  - metadata['aqueous_fluid'] = None
+  - metadata['oil_fluid'] = None
+  - Flags set: missing_aqueous_fluid=True, missing_oil_fluid=True
+  - Data still usable but fluid information lost
+
+Expected Behavior:
+  This is handled correctly by current code:
+    - Lines 536-544 in extractor.py set None values
+    - Lines 537-538 log informational message
+    - Flags track missing data for later review
+
+How to Fix:
+  NO FIX REQUIRED in code (already handles gracefully)
+
+  Document for users:
+    Files without fluid folders will have NULL aqueous_fluid/oil_fluid
+    Queries filtering by fluid will exclude these records
+
+COMMENT: actually for folders where fluid is made not known we shoudl default to 2% SDS solution and SO, for aqeuous and oil phases respectivly. Maybe add a tag to the database that this was inferred and not explicit. 
+
+
+============================================================
+CATEGORY 3: FLOW PARAMETER INCONSISTENCIES
+============================================================
+
+ISSUE 3.1: mlmin vs mlhr Units (CRITICAL)
+------------------------------------------
+Root Cause:
+  Extractor regex expects "mlhr": r'^(\d+)mlhr(\d+)mbar$'
+  56 instances use "mlmin" instead of "mlhr"
+
+Statistics:
+  mlhr occurrences: 1,186
+  mlmin occurrences: 56
+
+Examples:
+  Archive/W14_NA3_defect/250925/1mlmin50mbar/
+  W14_S1_R4/0610/0710/15mlmin250mbar/
+  W14_S1_R4/0610/0710/15mlmin400mbar/
+
+Impact:
+  - parse_flow_parameters() returns None for mlmin entries
+  - metadata['aqueous_flowrate'] = None
+  - metadata['oil_pressure'] = None
+  - parse_quality = 'failed' or 'minimal' (important field missing)
+  - Scientific analysis impossible without flow rate data
+
+How to Fix:
+  OPTION A: Standardize folder names to mlhr
+    Rename: 1mlmin50mbar/ → 1mlhr50mbar/
+    (Verify if mlmin is intentionally different unit or typo)
+
+  OPTION B: Update regex to accept both units
+    OLD: r'^(\d+)mlhr(\d+)mbar$'
+    NEW: r'^(\d+)ml(?:hr|min)(\d+)mbar$'
+
+    Store unit in metadata:
+      'aqueous_flowrate_unit': 'ml/hr' OR 'ml/min'
+
+    Add conversion logic if needed:
+      if unit == 'ml/min': flowrate *= 60  # Convert to ml/hr
+
+It shoudl actually all be ml/hr so if there is ml/min that is a typo and should eb kept as ml/hr e.g 5mlmin is deffinetly meant to be 5ml/hr. Please tage this in teh databse too but use the corrected version. 
+
+
+ISSUE 3.2: Missing Flow Parameters Folder in Some Paths
+--------------------------------------------------------
+Root Cause:
+  Similar to fluid issue, some paths may skip this level
+
+Impact:
+  - parse_flow_parameters() returns None
+  - Important fields missing from metadata
+  - parse_quality severely downgraded
+
+How to Fix:
+  Same as fluid missing data - code already handles gracefully
+  Document NULL values in query results
+
+COMMENT: if any prioirty field is missing in the databse we should report that in a txt file and in teh terminal so I can debug why it is msssing. which ones are missing from this tree? priority fields are device ID, bond_date, flow and pressure parameters, fluids, coating (for example there is a few files with PEGpre in the file name this a new bonding parameter where PEG was applied during device fabrication. 
+
+============================================================
+CATEGORY 4: FILE NAMING ISSUES
+============================================================
+
+ISSUE 4.1: ROI Case Sensitivity (MINOR)
+----------------------------------------
+Root Cause:
+  Extractor regex uses case-insensitive search: re.IGNORECASE
+  All files use uppercase "_ROI" consistently
+
+Statistics:
+  _ROI (uppercase): 851
+  _roi (lowercase): 0
+
+Impact:
+  NONE - Code already handles this correctly (line 271, re.IGNORECASE flag)
+
+How to Fix:
+  NO FIX REQUIRED
+
+
+ISSUE 4.2: "firstDFUs" File Naming Pattern
+-------------------------------------------
+Root Cause:
+  Some files use "firstDFUs" instead of specific DFU number
+
+Examples:
+  0610_1310_W13_S1_R2_10mlhr200mbar_firstDFUs_droplet_annotations.csv
+  2509_NA3_5mlmin150mbar_firstDFUs_droplet_annotations.csv
+
+Current Regex:
+  r'DFU(\d+)(?:_([A-C]))?(?:_t(\d+))?'
+
+Impact:
+  - Pattern will NOT match "firstDFUs" (expects numeric DFU row)
+  - parse_file_name() returns None
+  - metadata['dfu_row'] = None (core field missing)
+  - parse_quality = 'failed'
+  - These files completely excluded from useful analysis
+
+How to Fix:
+  OPTION A: Rename files to use actual DFU numbers
+    firstDFUs → DFU1 (or appropriate row number)
+
+  OPTION B: Update regex to handle "firstDFUs" pattern
+    OLD: r'DFU(\d+)(?:_([A-C]))?(?:_t(\d+))?'
+    NEW: r'(?:DFU(\d+)|firstDFUs)(?:_([A-C]))?(?:_t(\d+))?'
+
+    Map "firstDFUs" to special value:
+      dfu_row = 0  # or 'multiple' or 'combined'
+
+    Add metadata flag:
+      'is_combined_dfu': True
+
+COMMENT: FirstDFUs is part of DFU1 but a special note is made about them as this is wehre defects sually occur. If we can set them to DFU1 in teh databse but not them also as firstDFUs such that they can be handled properly in analysis that would be great. i guess this would be a extra column? true/flase if first DFU etc. 
+
+ISSUE 4.3: Additional Descriptive Text in Filenames
+----------------------------------------------------
+Examples:
+  0610_1310_w13_s1_r2_10mlhr200mbar_DFU4_defect_droplet_annotations.csv
+  2010_3010_W13_S2_R6_SDSSO_10mlhr400mbar_DFU1_C_delamination_defect_...
+
+Descriptive terms found:
+  - "defect"
+  - "delamination_defect"
+  - "measure40x", "measure40x_2"
+  - "product_20x_manual_annotations_calibration"
+
+Impact:
+  - Extra text between DFU identifier and file type descriptor
+  - Current regex should still match DFU portion
+  - However, descriptive information is lost (not captured)
+
+How to Fix:
+  OPTION A: No fix needed if DFU extraction works
+    - Test parsing to confirm regex captures DFU number despite extra text
+
+  OPTION B: Capture and store descriptive flags
+    - Extract keywords: defect, delamination, measure40x
+    - Add to metadata: 'has_defect': True, 'magnification': '40x'
+    - Useful for filtering defective measurements
+
+COMMENT: yeah we can caputre this info. the things like _B, _C etc are just more measurements made in teh same DFU number so they shoudl be handled as extra measurements for that DFU. (however in analysis I may want to distinguish into groups i.e looka t all the ROIs from each DFU1_A, _B, _C individually, so handle this hwever best for that) _X is the same thing. _40x is me telling myself its a differnt mag, so just treaat as what ever DFU_number it is filed under. the extra infor we can add to a notes column maybe? so 'defect' or 'defect-delamination' etc could go in there. For _product same thing if it comes after DFU_number just add it to the measurements for that region. 
+
+ISSUE 4.4: Device ID Case Inconsistency in Filenames
+-----------------------------------------------------
+Root Cause:
+  Folder names: W13_S1_R2 (uppercase W)
+  File names: Sometimes "w13_s1_r2" (lowercase w)
+
+Examples:
+  Folder: W13_S1_R2/
+  File: 0610_1310_w13_s1_r2_10mlhr200mbar_DFU1_droplet_annotations.csv
+
+Impact:
+  - Scanner extracts metadata from FOLDER PATH, not filename
+  - Device ID from folder ("W13_S1_R2") will parse correctly
+  - Filename device ID is embedded redundantly but not used by extractor
+  - MINOR: Inconsistent for human readability only
+
+How to Fix:
+  NO CODE FIX REQUIRED (extractor uses folder path, not filename parsing)
+
+  Optional: Standardize naming convention for consistency
+
+
+============================================================
+CATEGORY 5: DATE FORMAT ISSUES
+============================================================
+
+ISSUE 5.1: Short Date Format Year Ambiguity
+--------------------------------------------
+Root Cause:
+  Short dates like "0610" could be 2024 or 2025
+  Extractor uses heuristics to guess year (lines 129-200)
+
+Logic:
+  1. Try current year (2025)
+  2. Check if date is far in future (>365 days)
+  3. Compare to file modification timestamp
+  4. Fall back to file year if mismatch
+
+Examples:
+  W14_S1_R4/0610/ → Could be June 10, 2024 or June 10, 2025
+
+Impact:
+  - Year assumptions may be incorrect
+  - Metadata flagged: bonding_date_year_assumed=True
+  - Date comparison queries may give wrong results
+  - Scientific timeline analysis may be inaccurate
+
+Current Mitigation:
+  - Uses file modification time as validation hint
+  - Adds warning flags to metadata
+  - Logs decisions for debugging
+
+How to Fix:
+  OPTION A: Use full date format everywhere
+    0610/ → 06102025/ (standardize on DDMMYYYY)
+
+  OPTION B: Accept year assumptions as documented limitation
+    - Query results should note when year was assumed
+    - User validates dates match expected test timeline
+
+OPTIN B: i dont want to go through and rename them all. all iof these are 2025 and any new ones from 01 onwards will be 2026. take year from metadata it also appears in the .csv .txt files so we can stop guessing and just take from there. 
+
+
+ISSUE 5.2: Date Order Ambiguity (DDMM vs MMDD)
+-----------------------------------------------
+Root Cause:
+  Current parser assumes DDMMYYYY format
+  US systems might use MMDDYYYY
+
+Example:
+  0610 → Day=06, Month=10 (October 6) OR Month=06, Day=10 (June 10)?
+
+Impact:
+  - If user uses MMDD format, dates will be wrong
+  - Parser may generate invalid dates (e.g., month=13)
+
+Current Behavior:
+  - Code assumes DDMMYYYY (line 88-92)
+  - Validates day/month ranges (lines 109-114)
+  - Invalid dates will fail parsing
+
+How to Fix:
+  OPTION A: Document date format requirement
+    All dates must be DDMMYYYY or DDMM format
+    Day first, then month
+
+  OPTION B: Add format detection
+    - If day > 12, must be DDMM (day first)
+    - If month > 12 in MMDD interpretation, use DDMM
+    - Still ambiguous for dates where both valid (e.g., 0610)
+
+COMMENT: its alwys day then month. 0102 is the first of feb. 
+
+
+============================================================
+CATEGORY 6: DATA ORGANIZATION ISSUES
+============================================================
+
+ISSUE 6.1: Tool Folders at Root Level
+--------------------------------------
+Root Cause:
+  Folders at root: "0_dfu_measure_tools/" and "0_freq_analysis_tools/"
+  Likely contain utility/calibration files, not experimental data
+
+Impact:
+  - Scanner will traverse these folders
+  - Files found will attempt extraction
+  - May create false database entries
+  - Metadata extraction will fail (no device ID in path)
+
+How to Fix:
+  OPTION A: Exclude from scanner
+    Add to scanner exclusion list:
+      skip_dirs = ['Archive', '0_dfu_measure_tools', '0_freq_analysis_tools']
+
+  OPTION B: Create separate processing pipeline
+    - Extract tool/calibration data separately
+    - Store in different database table
+    - Mark as non-experimental data
+
+
+COMMENT: tools are not included. 
+
+ISSUE 6.2: Non-Measurement Files (Videos, Images)
+--------------------------------------------------
+Root Cause:
+  Archive contains MP4 videos and JPG images
+
+Examples:
+  Archive/W13_S4_R1X/1809_W13_S4_R1X/DFU2_400mbar5mlmin.mp4
+
+Impact:
+  NONE - Scanner only collects .csv and .txt files (line 78)
+
+How to Fix:
+  NO FIX REQUIRED (already filtered)
+
+
+============================================================
+CATEGORY 7: MEASUREMENT TYPE INFERENCE FAILURES
+============================================================
+
+ISSUE 7.1: CSV Files in freq_analysis Folder
+---------------------------------------------
+Root Cause:
+  Some freq_analysis folders contain CSV files, not just TXT
+
+Example:
+  W13_S1_R2/06102025/13102025/10mlhr200mbar/freq_analysis/
+    └── 0610_1310_W13_S1_R2_10mlhr200mbar_firstDFUs_droplet_annotations.csv
+
+Impact:
+  - measurement_type set to "freq_analysis" (from folder)
+  - file_type set to "csv" (from extension)
+  - Content parser tries parse_freq_txt_content() for CSV file (line 528-532)
+  - Parsing will fail (CSV structure incompatible with TXT parser)
+
+Current Logic (lines 518-532):
+  if file_type == 'csv' and measurement_type == 'dfu_measure':
+      parse_dfu_csv_content()
+  elif file_type == 'txt' and measurement_type == 'freq_analysis':
+      parse_freq_txt_content()
+
+Problem:
+  No handler for CSV in freq_analysis or TXT in dfu_measure
+
+How to Fix:
+  OPTION A: Move misplaced files
+    Move CSV files from freq_analysis/ to dfu_measure/
+    Move TXT files from dfu_measure/ to freq_analysis/
+
+  OPTION B: Add flexible content parsing
+    if file_type == 'csv':
+        parse_dfu_csv_content()  # Always parse CSV as droplet data
+    elif file_type == 'txt':
+        parse_freq_txt_content()  # Always parse TXT as frequency data
+
+    Ignore measurement_type folder for content parsing
+    Use file extension as source of truth
+
+COMMENT: only csv for droplet measuremnt and .txt for frequency analysis. what we would need to do here is check that the same file isnt enetered to the database twice. e.g if a csv is in the drop_measure folder and the same csv is in freq_analysis. thats a mistake and it should only be entered to teh dsatabase once. 
+============================================================
+SUMMARY OF RECOMMENDED FIXES
+============================================================
+
+CRITICAL FIXES (Required for basic functionality):
+1. Add missing dfu_measure/ and freq_analysis/ folders
+   OR implement file-extension-based type inference
+
+2. Fix flow rate unit parsing (mlmin vs mlhr)
+   - Update regex: r'^(\d+)ml(?:hr|min)(\d+)mbar$'
+   - Store unit in metadata
+
+3. Handle "firstDFUs" file naming pattern
+   - Update regex to recognize pattern
+   - Map to special DFU value
+
+4. Exclude Archive/ folder from scanning
+   - Add to scanner skip list
+
+HIGH PRIORITY FIXES (Improve data quality):
+5. Standardize fluid naming (add underscores)
+   OR update regex to handle both formats
+
+6. Rename "freq_analsis" to "freq_analysis"
+
+7. Implement measurement type inference from file extension
+   when folder structure is missing
+
+MEDIUM PRIORITY FIXES (Data completeness):
+8. Add "outputs/" folder handling (skip or map to parent)
+
+9. Exclude tool folders from main scan
+   (0_dfu_measure_tools, 0_freq_analysis_tools)
+
+10. Capture descriptive file name elements
+    (defect flags, magnification, etc.)
+
+LOW PRIORITY (Documentation/Polish):
+11. Document year assumption behavior for short dates
+
+12. Standardize device ID case in file names
+    (cosmetic only, doesn't affect parsing)
+
+
+============================================================
+TESTING RECOMMENDATIONS
+============================================================
+
+After implementing fixes:
+
+1. Run full pipeline on production data
+   python tests/test_full_pipeline.py
+
+2. Check parse quality distribution:
+   - How many files: parse_quality = 'complete'?
+   - How many files: parse_quality = 'partial'?
+   - How many files: parse_quality = 'failed'?
+
+3. Validate specific problem files:
+   - Test mlmin flow parameters extract correctly
+   - Test firstDFUs files are captured
+   - Test SDSSO (no underscore) parses correctly
+   - Test files without measurement_type folders
+
+4. Review log files for warnings:
+   - Year assumptions flagged appropriately
+   - Missing fluid information logged
+   - Parsing failures have clear reasons
+
+5. Spot check database entries:
+   - Dates are reasonable (not far in future/past)
+   - Flow rates have correct units
+   - DFU rows are numeric (not NULL)
+   - Measurement types are present
+
+
+============================================================
+ESTIMATED PARSING SUCCESS RATES
+============================================================
+
+Without fixes:
+- Archive folder: 0% (excluded or unparseable)
+- Tool folders: 0% (wrong structure)
+- Files with mlmin: 0% (flow params fail)
+- Files without dfu_measure/freq_analysis: 0% (measurement_type missing)
+- firstDFUs files: 0% (DFU parsing fails)
+- SDSSO files: Partial (fluid missing, rest OK)
+- Standard conforming files: 95%+ (mostly successful)
+
+Overall: ~40-60% success rate
+
+With critical fixes implemented:
+- Archive folder: 0% (intentionally excluded)
+- Tool folders: 0% (intentionally excluded)
+- Files with mlmin: 95%+ (fixed)
+- Files without measurement folders: 90%+ (inferred from extension)
+- firstDFUs files: 90%+ (regex updated)
+- SDSSO files: 95%+ (regex updated)
+- Standard conforming files: 95%+
+
+Overall: ~85-90% success rate
+
+
+============================================================
+END OF REPORT
+============================================================

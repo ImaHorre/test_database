@@ -1,0 +1,21 @@
+# Microsoft Graph API for SharePoint/OneDrive access
+msal>=1.24.0
+msgraph-core>=0.2.2
+requests>=2.31.0
+
+# Data processing
+pandas>=2.0.0
+numpy>=1.24.0
+
+# Date parsing
+python-dateutil>=2.8.2
+
+# Configuration
+python-dotenv>=1.0.0
+
+# Plotting and visualization
+matplotlib>=3.7.0
+seaborn>=0.12.0
+
+# Optional: For better async performance
+aiohttp>=3.8.0

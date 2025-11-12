@@ -1,0 +1,54 @@
+# Claude Code local settings
+.claude/settings.local.json
+
+# Python
+*.pyc
+*.pyo
+__pycache__/
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+
+# Environment variables and secrets
+.env
+.env.local
+secrets.json
+credentials.json
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Project specific - Data and outputs (DO NOT COMMIT)
+
+# Project specific - Data and outputs (DO NOT COMMIT)
+outputs/
+data/
+temp/
+*.tmp
+*.backup
+
+
+# Allow specific config/test CSVs if needed (uncomment to allow):
+# !configs/**/*.csv
+# !tests/**/*.csv
+
+# Logs
+*.log
+logs/

@@ -1,0 +1,62 @@
+{
+  "name": "flowrate_vs_droplet_aggregated",
+  "description": "Mean droplet size vs aqueous flowrate, grouped by device. Shows how flow rate affects droplet generation.",
+  "version": "1.0",
+
+  "axes": {
+    "x": "aqueous_flowrate",
+    "y": "droplet_size_mean"
+  },
+
+  "grouping": {
+    "group_by": "device_id",
+    "facet_row": null,
+    "facet_col": null
+  },
+
+  "aggregation": {
+    "method": "mean",
+    "group_cols": ["device_id", "aqueous_flowrate"],
+    "error_method": "sem"
+  },
+
+  "style": {
+    "plot_type": "line+markers",
+    "color_scheme": "vibrant",
+    "marker_size": 5,
+    "line_width": 1.5,
+    "alpha": 0.9,
+    "show_grid": true,
+    "show_legend": true,
+    "legend_position": "best"
+  },
+
+  "scales": {
+    "x_scale": "linear",
+    "y_scale": "linear",
+    "x_limits": null,
+    "y_limits": null
+  },
+
+  "labels": {
+    "title": "Droplet Size vs Aqueous Flowrate",
+    "x_label": "Aqueous Flowrate (ml/hr)",
+    "y_label": "Mean Droplet Diameter (µm)",
+    "legend_title": "Device"
+  },
+
+  "figure": {
+    "width": 12,
+    "height": 7,
+    "dpi": 300
+  },
+
+  "advanced": {
+    "sort_x": true,
+    "sort_legend": true,
+    "show_counts": true,
+    "connect_points": true,
+    "fill_between": false,
+    "dodge": 0.3
+  }
+}

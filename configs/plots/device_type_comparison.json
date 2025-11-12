@@ -1,0 +1,62 @@
+{
+  "name": "device_type_comparison",
+  "description": "Compare W13 vs W14 device performance. Aggregates all measurements by device type to show population-level differences.",
+  "version": "1.0",
+
+  "axes": {
+    "x": "oil_pressure",
+    "y": "droplet_size_mean"
+  },
+
+  "grouping": {
+    "group_by": "device_type",
+    "facet_row": null,
+    "facet_col": null
+  },
+
+  "aggregation": {
+    "method": "mean",
+    "group_cols": ["device_type", "oil_pressure"],
+    "error_method": "sem"
+  },
+
+  "style": {
+    "plot_type": "line+markers",
+    "color_scheme": "vibrant",
+    "marker_size": 6,
+    "line_width": 2,
+    "alpha": 0.9,
+    "show_grid": true,
+    "show_legend": true,
+    "legend_position": "best"
+  },
+
+  "scales": {
+    "x_scale": "linear",
+    "y_scale": "linear",
+    "x_limits": null,
+    "y_limits": null
+  },
+
+  "labels": {
+    "title": "W13 vs W14 Device Performance",
+    "x_label": "Oil Pressure (mbar)",
+    "y_label": "Mean Droplet Diameter (µm)",
+    "legend_title": "Device Type"
+  },
+
+  "figure": {
+    "width": 12,
+    "height": 7,
+    "dpi": 300
+  },
+
+  "advanced": {
+    "sort_x": true,
+    "sort_legend": true,
+    "show_counts": true,
+    "connect_points": true,
+    "fill_between": false,
+    "dodge": 5
+  }
+}

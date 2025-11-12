@@ -1,0 +1,62 @@
+{
+  "name": "stability_over_time",
+  "description": "Droplet size stability over testing dates. Tracks device performance across multiple test sessions to identify drift or consistency.",
+  "version": "1.0",
+
+  "axes": {
+    "x": "testing_date",
+    "y": "droplet_size_mean",
+    "y_error": "droplet_size_std"
+  },
+
+  "grouping": {
+    "group_by": "device_id",
+    "facet_row": null,
+    "facet_col": null
+  },
+
+  "aggregation": {
+    "method": "mean",
+    "group_cols": ["device_id", "testing_date"],
+    "error_method": "std"
+  },
+
+  "style": {
+    "plot_type": "line+markers",
+    "color_scheme": "earth",
+    "marker_size": 5,
+    "line_width": 1.5,
+    "alpha": 0.9,
+    "show_grid": true,
+    "show_legend": true,
+    "legend_position": "best"
+  },
+
+  "scales": {
+    "x_scale": "linear",
+    "y_scale": "linear",
+    "x_limits": null,
+    "y_limits": null
+  },
+
+  "labels": {
+    "title": "Droplet Size Stability Over Time",
+    "x_label": "Testing Date",
+    "y_label": "Mean Droplet Diameter (µm)",
+    "legend_title": "Device"
+  },
+
+  "figure": {
+    "width": 14,
+    "height": 7,
+    "dpi": 300
+  },
+
+  "advanced": {
+    "sort_x": true,
+    "sort_legend": true,
+    "show_counts": false,
+    "connect_points": true,
+    "fill_between": false
+  }
+}

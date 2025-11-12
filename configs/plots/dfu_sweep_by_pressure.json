@@ -1,0 +1,61 @@
+{
+  "name": "dfu_sweep_by_pressure",
+  "description": "DFU sweep grouped by oil pressure (for single device with multiple pressures)",
+  "version": "1.0",
+
+  "axes": {
+    "x": "dfu_row",
+    "y": "droplet_size_mean",
+    "y_error": "droplet_size_std"
+  },
+
+  "grouping": {
+    "group_by": "oil_pressure",
+    "facet_row": null,
+    "facet_col": null
+  },
+
+  "aggregation": {
+    "method": "none"
+  },
+
+  "style": {
+    "plot_type": "scatter",
+    "color_scheme": "dark",
+    "marker_size": 6,
+    "line_width": 1.5,
+    "alpha": 0.9,
+    "show_grid": true,
+    "show_legend": true,
+    "legend_position": "best"
+  },
+
+  "scales": {
+    "x_scale": "linear",
+    "y_scale": "linear",
+    "x_limits": null,
+    "y_limits": null
+  },
+
+  "labels": {
+    "title": "Droplet Size Across DFU Rows (by Pressure)",
+    "x_label": "DFU Row Number",
+    "y_label": "Droplet Diameter (µm)",
+    "legend_title": "Pressure (mbar)"
+  },
+
+  "figure": {
+    "width": 12,
+    "height": 7,
+    "dpi": 300
+  },
+
+  "advanced": {
+    "sort_x": true,
+    "sort_legend": true,
+    "show_counts": false,
+    "connect_points": true,
+    "fill_between": false,
+    "dodge": 0.08
+  }
+}

@@ -1,0 +1,341 @@
+================================================================================
+DETAILED EXTRACTION STATISTICS REPORT
+Generated: 2025-11-07 14:42:19
+================================================================================
+
+EXTRACTION QUALITY SUMMARY
+--------------------------------------------------------------------------------
+COMPLETE  :  434 ( 47.2%)
+PARTIAL   :   79 (  8.6%)
+MINIMAL   :  277 ( 30.1%)
+FAILED    :  129 ( 14.0%)
+
+DEVICE TYPE DISTRIBUTION
+--------------------------------------------------------------------------------
+W13 Devices: 513 files across 1 unique devices
+W14 Devices: 0 files across 0 unique devices
+
+Top 15 Devices by File Count:
+  W13_S2_R9      :  513 files
+
+TIMEPOINT EXTRACTION STATISTICS
+--------------------------------------------------------------------------------
+Files with timepoint data: 16 (1.7%)
+Unique timepoints found: 2
+Distribution:
+  t5:   11 files
+  t6:    5 files
+
+AREA SUFFIX EXTRACTION STATISTICS
+--------------------------------------------------------------------------------
+Files with area suffix: 0 (0.0%)
+No area suffix data found
+
+MEASUREMENT TYPE DISTRIBUTION
+--------------------------------------------------------------------------------
+freq_analysis       :  608 ( 66.2%)
+dfu_measure         :  179 ( 19.5%)
+
+DFU NUMBER DISTRIBUTION
+--------------------------------------------------------------------------------
+
+FLUID COMBINATIONS
+--------------------------------------------------------------------------------
+Aqueous Fluids:
+  SDS                      :  792 ( 86.2%)
+  NaCas                    :  127 ( 13.8%)
+
+Oil Fluids:
+  SO                       :  919 (100.0%)
+
+FLOW PARAMETER COMBINATIONS
+--------------------------------------------------------------------------------
+Top 20 flow combinations:
+   5.0 ml/hr,  300 mbar:  152 files
+   5.0 ml/hr,  200 mbar:  134 files
+   5.0 ml/hr,  100 mbar:  116 files
+  10.0 ml/hr,  200 mbar:   64 files
+  10.0 ml/hr,  300 mbar:   51 files
+  10.0 ml/hr,  400 mbar:   33 files
+   1.0 ml/hr,  150 mbar:   33 files
+   5.0 ml/hr,   50 mbar:   29 files
+  10.0 ml/hr,  500 mbar:   22 files
+  15.0 ml/hr,  200 mbar:   16 files
+   5.0 ml/hr,  400 mbar:   16 files
+   1.0 ml/hr,  100 mbar:   12 files
+  15.0 ml/hr,  400 mbar:    8 files
+  15.0 ml/hr,  250 mbar:    3 files
+  25.0 ml/hr,  400 mbar:    1 files
+
+SAMPLE SUCCESSFUL EXTRACTIONS (Complete Quality)
+--------------------------------------------------------------------------------
+
+1. W13_S2_R9/3110/03112025/NaCas_SO/5ml200mbar/3110_0311_w13_s2_r9_PEGpre_NaCas_SO_5mlhr200mbar_DFU1_B_droplet_annotations_20251106_111857.csv
+   raw_path: W13_S2_R9/3110/03112025/NaCas_SO/5ml200mbar/3110_0311_w13_s2_r9_PEGpre_NaCas_SO_5mlhr200mbar_DFU1_B_droplet_annotations_20251106_111857.csv
+   path_parts: ['W13_S2_R9', '3110', '03112025', 'NaCas_SO', '5ml200mbar', '3110_0311_w13_s2_r9_PEGpre_NaCas_SO_5mlhr200mbar_DFU1_B_droplet_annotations_20251106_111857.csv']
+   extraction_timestamp: 2025-11-07T14:42:19.350153
+   device_type: W13
+   device_id: W13_S2_R9
+   wafer: 13
+   shim: 2
+   replica: 9
+   bonding_date: 2025-10-31
+   bonding_date_year_assumed: True
+   testing_date: 2025-11-03
+   aqueous_fluid: NaCas
+   oil_fluid: SO
+   dfu_row: 1
+   file_type: csv
+   measurement_area: B
+   file_name: 3110_0311_w13_s2_r9_PEGpre_NaCas_SO_5mlhr200mbar_DFU1_B_droplet_annotations_20251106_111857.csv
+   measurement_type: dfu_measure
+   measurement_type_inferred: True
+   parse_quality: minimal
+
+2. W13_S2_R9/3110/03112025/NaCas_SO/5ml200mbar/3110_0311_w13_s2_r9_PEGpre_NaCas_SO_5mlhr200mbar_DFU1_B_ROI1_frequency_analysis.txt
+   raw_path: W13_S2_R9/3110/03112025/NaCas_SO/5ml200mbar/3110_0311_w13_s2_r9_PEGpre_NaCas_SO_5mlhr200mbar_DFU1_B_ROI1_frequency_analysis.txt
+   path_parts: ['W13_S2_R9', '3110', '03112025', 'NaCas_SO', '5ml200mbar', '3110_0311_w13_s2_r9_PEGpre_NaCas_SO_5mlhr200mbar_DFU1_B_ROI1_frequency_analysis.txt']
+   extraction_timestamp: 2025-11-07T14:42:19.350461
+   device_type: W13
+   device_id: W13_S2_R9
+   wafer: 13
+   shim: 2
+   replica: 9
+   bonding_date: 2025-10-31
+   bonding_date_year_assumed: True
+   testing_date: 2025-11-03
+   aqueous_fluid: NaCas
+   oil_fluid: SO
+   dfu_row: 1
+   file_type: txt
+   roi: 1
+   measurement_area: B
+   file_name: 3110_0311_w13_s2_r9_PEGpre_NaCas_SO_5mlhr200mbar_DFU1_B_ROI1_frequency_analysis.txt
+   measurement_type: freq_analysis
+   measurement_type_inferred: True
+   parse_quality: minimal
+
+3. W13_S2_R9/3110/03112025/NaCas_SO/5ml200mbar/3110_0311_w13_s2_r9_PEGpre_NaCas_SO_5mlhr200mbar_DFU1_B_ROI2_frequency_analysis.txt
+   raw_path: W13_S2_R9/3110/03112025/NaCas_SO/5ml200mbar/3110_0311_w13_s2_r9_PEGpre_NaCas_SO_5mlhr200mbar_DFU1_B_ROI2_frequency_analysis.txt
+   path_parts: ['W13_S2_R9', '3110', '03112025', 'NaCas_SO', '5ml200mbar', '3110_0311_w13_s2_r9_PEGpre_NaCas_SO_5mlhr200mbar_DFU1_B_ROI2_frequency_analysis.txt']
+   extraction_timestamp: 2025-11-07T14:42:19.350758
+   device_type: W13
+   device_id: W13_S2_R9
+   wafer: 13
+   shim: 2
+   replica: 9
+   bonding_date: 2025-10-31
+   bonding_date_year_assumed: True
+   testing_date: 2025-11-03
+   aqueous_fluid: NaCas
+   oil_fluid: SO
+   dfu_row: 1
+   file_type: txt
+   roi: 2
+   measurement_area: B
+   file_name: 3110_0311_w13_s2_r9_PEGpre_NaCas_SO_5mlhr200mbar_DFU1_B_ROI2_frequency_analysis.txt
+   measurement_type: freq_analysis
+   measurement_type_inferred: True
+   parse_quality: minimal
+
+4. W13_S2_R9/3110/03112025/NaCas_SO/5ml200mbar/3110_0311_w13_s2_r9_PEGpre_NaCas_SO_5mlhr200mbar_DFU1_B_ROI3_frequency_analysis.txt
+   raw_path: W13_S2_R9/3110/03112025/NaCas_SO/5ml200mbar/3110_0311_w13_s2_r9_PEGpre_NaCas_SO_5mlhr200mbar_DFU1_B_ROI3_frequency_analysis.txt
+   path_parts: ['W13_S2_R9', '3110', '03112025', 'NaCas_SO', '5ml200mbar', '3110_0311_w13_s2_r9_PEGpre_NaCas_SO_5mlhr200mbar_DFU1_B_ROI3_frequency_analysis.txt']
+   extraction_timestamp: 2025-11-07T14:42:19.351044
+   device_type: W13
+   device_id: W13_S2_R9
+   wafer: 13
+   shim: 2
+   replica: 9
+   bonding_date: 2025-10-31
+   bonding_date_year_assumed: True
+   testing_date: 2025-11-03
+   aqueous_fluid: NaCas
+   oil_fluid: SO
+   dfu_row: 1
+   file_type: txt
+   roi: 3
+   measurement_area: B
+   file_name: 3110_0311_w13_s2_r9_PEGpre_NaCas_SO_5mlhr200mbar_DFU1_B_ROI3_frequency_analysis.txt
+   measurement_type: freq_analysis
+   measurement_type_inferred: True
+   parse_quality: minimal
+
+5. W13_S2_R9/3110/03112025/NaCas_SO/5ml200mbar/3110_0311_w13_s2_r9_PEGpre_NaCas_SO_5mlhr200mbar_DFU1_C_droplet_annotations_20251106_112135.csv
+   raw_path: W13_S2_R9/3110/03112025/NaCas_SO/5ml200mbar/3110_0311_w13_s2_r9_PEGpre_NaCas_SO_5mlhr200mbar_DFU1_C_droplet_annotations_20251106_112135.csv
+   path_parts: ['W13_S2_R9', '3110', '03112025', 'NaCas_SO', '5ml200mbar', '3110_0311_w13_s2_r9_PEGpre_NaCas_SO_5mlhr200mbar_DFU1_C_droplet_annotations_20251106_112135.csv']
+   extraction_timestamp: 2025-11-07T14:42:19.351329
+   device_type: W13
+   device_id: W13_S2_R9
+   wafer: 13
+   shim: 2
+   replica: 9
+   bonding_date: 2025-10-31
+   bonding_date_year_assumed: True
+   testing_date: 2025-11-03
+   aqueous_fluid: NaCas
+   oil_fluid: SO
+   dfu_row: 1
+   file_type: csv
+   measurement_area: C
+   file_name: 3110_0311_w13_s2_r9_PEGpre_NaCas_SO_5mlhr200mbar_DFU1_C_droplet_annotations_20251106_112135.csv
+   measurement_type: dfu_measure
+   measurement_type_inferred: True
+   parse_quality: minimal
+
+SAMPLE FAILED EXTRACTIONS
+--------------------------------------------------------------------------------
+
+1. 5mlhr250mbar/2010_3010_W13_S2_R6_SDSSO_1mlhr100mbar_DFU2_ROI1_frequency_analysis.txt
+   Extracted fields:
+     raw_path: 5mlhr250mbar/2010_3010_W13_S2_R6_SDSSO_1mlhr100mbar_DFU2_ROI1_frequency_analysis.txt
+     path_parts: ['5mlhr250mbar', '2010_3010_W13_S2_R6_SDSSO_1mlhr100mbar_DFU2_ROI1_frequency_analysis.txt']
+     extraction_timestamp: 2025-11-07T14:42:19.337547
+     aqueous_fluid: SDS
+     aqueous_fluid_inferred: True
+     oil_fluid: SO
+     oil_fluid_inferred: True
+     parse_quality: failed
+   Missing critical fields:
+     - device_id
+     - bonding_date
+     - flow parameters
+
+2. 1mlhr200mbar/2010_3010_W13_S2_R6_SDSSO_1mlhr200mbar_DFU1_B_droplet_annotations_20251031_142039.csv
+   Extracted fields:
+     raw_path: 1mlhr200mbar/2010_3010_W13_S2_R6_SDSSO_1mlhr200mbar_DFU1_B_droplet_annotations_20251031_142039.csv
+     path_parts: ['1mlhr200mbar', '2010_3010_W13_S2_R6_SDSSO_1mlhr200mbar_DFU1_B_droplet_annotations_20251031_142039.csv']
+     extraction_timestamp: 2025-11-07T14:42:19.337640
+     aqueous_fluid: SDS
+     aqueous_fluid_inferred: True
+     oil_fluid: SO
+     oil_fluid_inferred: True
+     parse_quality: failed
+   Missing critical fields:
+     - device_id
+     - bonding_date
+     - flow parameters
+
+3. 1mlhr200mbar/2010_3010_W13_S2_R6_SDSSO_1mlhr200mbar_DFU1_B_ROI1_frequency_analysis.txt
+   Extracted fields:
+     raw_path: 1mlhr200mbar/2010_3010_W13_S2_R6_SDSSO_1mlhr200mbar_DFU1_B_ROI1_frequency_analysis.txt
+     path_parts: ['1mlhr200mbar', '2010_3010_W13_S2_R6_SDSSO_1mlhr200mbar_DFU1_B_ROI1_frequency_analysis.txt']
+     extraction_timestamp: 2025-11-07T14:42:19.337737
+     aqueous_fluid: SDS
+     aqueous_fluid_inferred: True
+     oil_fluid: SO
+     oil_fluid_inferred: True
+     parse_quality: failed
+   Missing critical fields:
+     - device_id
+     - bonding_date
+     - flow parameters
+
+4. 1mlhr200mbar/2010_3010_W13_S2_R6_SDSSO_1mlhr200mbar_DFU1_B_ROI2_frequency_analysis.txt
+   Extracted fields:
+     raw_path: 1mlhr200mbar/2010_3010_W13_S2_R6_SDSSO_1mlhr200mbar_DFU1_B_ROI2_frequency_analysis.txt
+     path_parts: ['1mlhr200mbar', '2010_3010_W13_S2_R6_SDSSO_1mlhr200mbar_DFU1_B_ROI2_frequency_analysis.txt']
+     extraction_timestamp: 2025-11-07T14:42:19.337828
+     aqueous_fluid: SDS
+     aqueous_fluid_inferred: True
+     oil_fluid: SO
+     oil_fluid_inferred: True
+     parse_quality: failed
+   Missing critical fields:
+     - device_id
+     - bonding_date
+     - flow parameters
+
+5. 1mlhr200mbar/2010_3010_W13_S2_R6_SDSSO_1mlhr200mbar_DFU1_B_ROI3_frequency_analysis.txt
+   Extracted fields:
+     raw_path: 1mlhr200mbar/2010_3010_W13_S2_R6_SDSSO_1mlhr200mbar_DFU1_B_ROI3_frequency_analysis.txt
+     path_parts: ['1mlhr200mbar', '2010_3010_W13_S2_R6_SDSSO_1mlhr200mbar_DFU1_B_ROI3_frequency_analysis.txt']
+     extraction_timestamp: 2025-11-07T14:42:19.337943
+     aqueous_fluid: SDS
+     aqueous_fluid_inferred: True
+     oil_fluid: SO
+     oil_fluid_inferred: True
+     parse_quality: failed
+   Missing critical fields:
+     - device_id
+     - bonding_date
+     - flow parameters
+
+6. 1mlhr200mbar/2010_3010_W13_S2_R6_SDSSO_1mlhr200mbar_DFU1_droplet_annotations_20251031_141641.csv
+   Extracted fields:
+     raw_path: 1mlhr200mbar/2010_3010_W13_S2_R6_SDSSO_1mlhr200mbar_DFU1_droplet_annotations_20251031_141641.csv
+     path_parts: ['1mlhr200mbar', '2010_3010_W13_S2_R6_SDSSO_1mlhr200mbar_DFU1_droplet_annotations_20251031_141641.csv']
+     extraction_timestamp: 2025-11-07T14:42:19.338034
+     aqueous_fluid: SDS
+     aqueous_fluid_inferred: True
+     oil_fluid: SO
+     oil_fluid_inferred: True
+     parse_quality: failed
+   Missing critical fields:
+     - device_id
+     - bonding_date
+     - flow parameters
+
+7. 1mlhr200mbar/2010_3010_W13_S2_R6_SDSSO_1mlhr200mbar_DFU1_ROI1_frequency_analysis.txt
+   Extracted fields:
+     raw_path: 1mlhr200mbar/2010_3010_W13_S2_R6_SDSSO_1mlhr200mbar_DFU1_ROI1_frequency_analysis.txt
+     path_parts: ['1mlhr200mbar', '2010_3010_W13_S2_R6_SDSSO_1mlhr200mbar_DFU1_ROI1_frequency_analysis.txt']
+     extraction_timestamp: 2025-11-07T14:42:19.338125
+     aqueous_fluid: SDS
+     aqueous_fluid_inferred: True
+     oil_fluid: SO
+     oil_fluid_inferred: True
+     parse_quality: failed
+   Missing critical fields:
+     - device_id
+     - bonding_date
+     - flow parameters
+
+8. 1mlhr200mbar/2010_3010_W13_S2_R6_SDSSO_1mlhr200mbar_DFU1_ROI2_frequency_analysis.txt
+   Extracted fields:
+     raw_path: 1mlhr200mbar/2010_3010_W13_S2_R6_SDSSO_1mlhr200mbar_DFU1_ROI2_frequency_analysis.txt
+     path_parts: ['1mlhr200mbar', '2010_3010_W13_S2_R6_SDSSO_1mlhr200mbar_DFU1_ROI2_frequency_analysis.txt']
+     extraction_timestamp: 2025-11-07T14:42:19.338214
+     aqueous_fluid: SDS
+     aqueous_fluid_inferred: True
+     oil_fluid: SO
+     oil_fluid_inferred: True
+     parse_quality: failed
+   Missing critical fields:
+     - device_id
+     - bonding_date
+     - flow parameters
+
+9. 1mlhr200mbar/2010_3010_W13_S2_R6_SDSSO_1mlhr200mbar_DFU1_ROI3_frequency_analysis.txt
+   Extracted fields:
+     raw_path: 1mlhr200mbar/2010_3010_W13_S2_R6_SDSSO_1mlhr200mbar_DFU1_ROI3_frequency_analysis.txt
+     path_parts: ['1mlhr200mbar', '2010_3010_W13_S2_R6_SDSSO_1mlhr200mbar_DFU1_ROI3_frequency_analysis.txt']
+     extraction_timestamp: 2025-11-07T14:42:19.338305
+     aqueous_fluid: SDS
+     aqueous_fluid_inferred: True
+     oil_fluid: SO
+     oil_fluid_inferred: True
+     parse_quality: failed
+   Missing critical fields:
+     - device_id
+     - bonding_date
+     - flow parameters
+
+10. 1mlhr200mbar/2010_3010_W13_S2_R6_SDSSO_1mlhr200mbar_DFU2_droplet_annotations_20251031_142238.csv
+   Extracted fields:
+     raw_path: 1mlhr200mbar/2010_3010_W13_S2_R6_SDSSO_1mlhr200mbar_DFU2_droplet_annotations_20251031_142238.csv
+     path_parts: ['1mlhr200mbar', '2010_3010_W13_S2_R6_SDSSO_1mlhr200mbar_DFU2_droplet_annotations_20251031_142238.csv']
+     extraction_timestamp: 2025-11-07T14:42:19.338396
+     aqueous_fluid: SDS
+     aqueous_fluid_inferred: True
+     oil_fluid: SO
+     oil_fluid_inferred: True
+     parse_quality: failed
+   Missing critical fields:
+     - device_id
+     - bonding_date
+     - flow parameters
+
+================================================================================
+END OF DETAILED STATISTICS
+================================================================================
